@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: 'http://localhost:5000/api',
+  baseURL: 'https://invoice-generator-backend-e3qj8zla4.vercel.app/api',
 });
 
 export default api;

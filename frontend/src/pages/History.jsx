@@ -5,7 +5,7 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
-} from '../components/ui/Card';
+} from '../components/ui/card.tsx';
 import InvoiceDownloadButton from '../components/InvoiceDownloadButton';
 import { Loader2 } from 'lucide-react';
 

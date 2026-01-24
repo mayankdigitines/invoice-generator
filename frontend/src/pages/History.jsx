@@ -5,14 +5,18 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  CardFooter,
 } from '../components/ui/card.tsx';
 import InvoiceDownloadButton from '../components/InvoiceDownloadButton';
-import { Loader2 } from 'lucide-react';
+import { Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Button } from '../components/ui/button';
 
 export default function History() {
   const [invoices, setInvoices] = useState([]);
   const [business, setBusiness] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 6;
 
   useEffect(() => {
     // We need both Invoices and Business Profile to generate PDFs
@@ -40,15 +44,28 @@ export default function History() {
       </div>
     );
 
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentItems = invoices.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(invoices.length / itemsPerPage);
+
+  const handlePrevious = () => {
+    setCurrentPage((prev) => Math.max(prev - 1, 1));
+  };
+
+  const handleNext = () => {
+    setCurrentPage((prev) => Math.min(prev + 1, totalPages));
+  };
+
   return (
     <div className="space-y-6">
       <h2 className="text-3xl font-bold tracking-tight">Invoice History</h2>
 
-      <Card>
-        <CardHeader>
+      <Card className="overflow-hidden p-0 gap-0">
+        <CardHeader className="px-6 py-4 border-b">
           <CardTitle>All Invoices</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
           <div className="relative w-full overflow-auto">
             <table className="w-full caption-bottom text-sm text-left">
               <thead className="[&_tr]:border-b">
@@ -79,7 +96,7 @@ export default function History() {
                     </td>
                   </tr>
                 )}
-                {invoices.map((inv) => (
+                {currentItems.map((inv) => (
                   <tr
                     key={inv._id}
                     className="border-b transition-colors hover:bg-muted/50"
@@ -111,6 +128,33 @@ export default function History() {
             </table>
           </div>
         </CardContent>
+        <CardFooter className="flex items-center justify-between border-t p-4 bg-muted/10">
+          <div className="text-xs text-muted-foreground whitespace-nowrap">
+            Showing <strong>{invoices.length > 0 ? indexOfFirstItem + 1 : 0}-{Math.min(indexOfLastItem, invoices.length)}</strong> of <strong>{invoices.length}</strong> invoices
+          </div>
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handlePrevious}
+              disabled={currentPage === 1}
+              className="h-8 px-2 lg:px-3 hover:cursor-pointer"
+            >
+              <ChevronLeft className="mr-1 h-4 w-4" />
+              Previous
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleNext}
+              disabled={currentPage === totalPages || totalPages === 0}
+              className="h-8 px-2 lg:px-3 hover:cursor-pointer"
+            >
+              Next
+              <ChevronRight className="ml-1 h-4 w-4" />
+            </Button>
+          </div>
+        </CardFooter>
       </Card>
     </div>
   );

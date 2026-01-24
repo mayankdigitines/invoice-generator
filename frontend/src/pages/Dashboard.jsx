@@ -97,18 +97,30 @@ export default function Dashboard() {
     setItems(newItems);
   };
 
-  const calculateTotal = () => {
-    return items.reduce((acc, item) => {
-      const base = item.price * item.quantity;
-      const discount = (base * item.discount) / 100;
-      const tax = ((base - discount) * item.gstRate) / 100;
-      return acc + base - discount + tax;
-    }, 0);
+  const calculateTotals = () => {
+    return items.reduce(
+      (acc, item) => {
+        const base = item.price * item.quantity;
+        const discountAmount = (base * item.discount) / 100;
+        const taxable = base - discountAmount;
+        const taxAmount = (taxable * item.gstRate) / 100;
+        
+        acc.subtotal += base;
+        acc.discount += discountAmount;
+        acc.tax += taxAmount;
+        acc.total += taxable + taxAmount;
+        
+        return acc;
+      },
+      { subtotal: 0, discount: 0, tax: 0, total: 0 }
+    );
   };
+
+  const totals = calculateTotals();
 
   const handleSubmit = async () => {
     try {
-      const res = await api.post('/invoices/generate', { customer, items });
+      const res = await api.post('/invoices/generate', { customer, items});
       setGeneratedInvoice(res.data);
       setIsSuccess(true);
     } catch (err) {
@@ -167,9 +179,13 @@ export default function Dashboard() {
             Fill in the details below to generate a new invoice.
           </p>
         </div>
-        <div className="text-2xl font-bold text-primary bg-primary/10 px-4 py-2 rounded-lg">
-          Total: ₹{calculateTotal().toFixed(2)}
-        </div>
+        <Button
+          size="lg"
+          onClick={handleSubmit}
+          className="h-12 text-lg  from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg shadow-blue-500/25 transition-all hover:scale-[1.02]"
+        >
+          <FileText className="mr-2 h-5 w-5" /> Generate PDF
+        </Button>
       </div>
 
       {/* Customer Section */}
@@ -177,13 +193,14 @@ export default function Dashboard() {
         <CardHeader>
           <CardTitle className="text-lg">Customer Details</CardTitle>
         </CardHeader>
-        <CardContent className="grid md:grid-cols-3 gap-4 relative">
+        <CardContent className="grid md:grid-cols-3 gap-3 relative">
           <div className="relative">
-            <label className="text-sm font-medium mb-1 block">
+            <label  htmlFor="phone" className="text-sm font-medium mb-1 block">
               Phone or Search
             </label>
             <div className="relative">
               <Input
+                id="phone"
                 placeholder="Start typing..."
                 value={customer.phone}
                 onChange={(e) => handleSearch(e.target.value)}
@@ -200,7 +217,7 @@ export default function Dashboard() {
                     className="p-2 hover:bg-muted cursor-pointer text-sm border-b last:border-0"
                     onClick={() => selectCustomer(res)}
                   >
-                    <span className="font-bold">{res.name}</span>{' '}
+                    <span className="">{res.name}</span>{' '}
                     <span className="text-gray-500">- {res.phone}</span>
                   </div>
                 ))}
@@ -208,8 +225,9 @@ export default function Dashboard() {
             )}
           </div>
           <div>
-            <label className="text-sm font-medium mb-1 block">Full Name</label>
+            <label htmlFor="name" className="text-sm font-medium mb-1 block">Full Name</label>
             <Input
+              id="name"
               value={customer.name}
               onChange={(e) =>
                 setCustomer({ ...customer, name: e.target.value })
@@ -217,8 +235,9 @@ export default function Dashboard() {
             />
           </div>
           <div>
-            <label className="text-sm font-medium mb-1 block">Address</label>
+            <label htmlFor="address" className="text-sm font-medium mb-1 block">Address</label>
             <Input
+            id="address"
               value={customer.address}
               onChange={(e) =>
                 setCustomer({ ...customer, address: e.target.value })
@@ -230,18 +249,18 @@ export default function Dashboard() {
 
       {/* Items Section */}
       <Card>
-        <CardHeader>
+        <CardHeader className="pb-3">
           <CardTitle className="text-lg">Items</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center gap-2 font-medium text-sm text-muted-foreground mb-2">
-            <div className="flex-1">Description</div>
-            <div className="w-20 text-center">Qty</div>
-            <div className="w-24 text-center">Price</div>
-            <div className="w-16 text-center">GST%</div>
-            <div className="w-16 text-center">Disc%</div>
-            <div className="w-24 text-right">Total</div>
-            <div className="w-10"></div>
+          <div className="grid grid-cols-12 gap-4 font-medium text-sm text-muted-foreground px-1">
+            <div className="col-span-4">Description</div>
+            <div className="col-span-1 text-center">Qty</div>
+            <div className="col-span-2 text-center">Price</div>
+            <div className="col-span-1 text-center">GST%</div>
+            <div className="col-span-1 text-center">Disc%</div>
+            <div className="col-span-2 text-right">Total</div>
+            <div className="col-span-1"></div>
           </div>
 
           {items.map((item, index) => {
@@ -251,11 +270,12 @@ export default function Dashboard() {
             const rowTotal = base - discount + tax;
 
             return (
-              <div key={index} className="flex items-center gap-2">
-                <div className="flex-1">
+              <div key={index} className="grid grid-cols-12 gap-4 items-center group">
+                <div className="col-span-4 relative">
                   <Input
                     list={`items-list-${index}`}
-                    placeholder="Enter item name..."
+                    placeholder="Item name"
+                    className="h-9"
                     value={item.name}
                     onChange={(e) => updateItem(index, 'name', e.target.value)}
                   />
@@ -265,75 +285,97 @@ export default function Dashboard() {
                     ))}
                   </datalist>
                 </div>
-                <Input
-                  className="w-20 text-center"
-                  type="number"
-                  min={1}
-                  value={item.quantity}
-                  onChange={(e) =>
-                    updateItem(index, 'quantity', Number(e.target.value))
-                  }
-                />
-                <Input
-                  className="w-24 text-center"
-                  type="number"
-                  value={item.price}
-                  min={0}
-                  onChange={(e) =>
-                    updateItem(index, 'price', Number(e.target.value))
-                  }
-                />
-                <Input
-                  className="w-16 text-center"
-                  type="number"
-                  value={item.gstRate}
-                  min={0}
-                  onChange={(e) =>
-                    updateItem(index, 'gstRate', Number(e.target.value))
-                  }
-                />
-                <Input
-                  className="w-16 text-center"
-                  type="number"
-                  value={item.discount}
-                  min={0}
-                  onChange={(e) =>
-                    updateItem(index, 'discount', Number(e.target.value))
-                  }
-                />
-                <div className="w-24 text-right font-mono font-medium">
+                <div className="col-span-1">
+                  <Input
+                    className="h-9 text-center p-0"
+                    type="number"
+                    min={1}
+                    value={item.quantity}
+                    onChange={(e) =>
+                      updateItem(index, 'quantity', Number(e.target.value))
+                    }
+                  />
+                </div>
+                <div className="col-span-2">
+                  <Input
+                    className="h-9 text-center"
+                    type="number"
+                    value={item.price}
+                    min={0}
+                    onChange={(e) =>
+                      updateItem(index, 'price', Number(e.target.value))
+                    }
+                  />
+                </div>
+                <div className="col-span-1">
+                  <Input
+                    className="h-9 text-center p-0"
+                    type="number"
+                    value={item.gstRate}
+                    min={0}
+                    onChange={(e) =>
+                      updateItem(index, 'gstRate', Number(e.target.value))
+                    }
+                  />
+                </div>
+                <div className="col-span-1">
+                  <Input
+                    className="h-9 text-center p-0"
+                    type="number"
+                    value={item.discount}
+                    min={0}
+                    onChange={(e) =>
+                      updateItem(index, 'discount', Number(e.target.value))
+                    }
+                  />
+                </div>
+                <div className="col-span-2 text-right font-mono font-medium">
                   {rowTotal.toFixed(2)}
                 </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                  onClick={() => removeItem(index)}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+                <div className="col-span-1 flex justify-center">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-neutral-400 hover:text-red-600 hover:bg-neutral-100"
+                    onClick={() => removeItem(index)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
             );
           })}
 
           <Button
             variant="outline"
+            size="sm"
             onClick={addItem}
-            className="w-full mt-4 border-dashed border-2"
+            className="w-full mt-2 border-dashed text-muted-foreground hover:text-primary"
           >
-            <Plus className="mr-2 h-4 w-4" /> Add Another Item
+            <Plus className="mr-2 h-4 w-4" /> Add Item
           </Button>
         </CardContent>
       </Card>
 
       <div className="flex justify-end pt-4">
-        <Button
-          size="lg"
-          onClick={handleSubmit}
-          className="w-full md:w-64 h-12 text-lg shadow-xl shadow-primary/20"
-        >
-          <FileText className="mr-2 h-5 w-5" /> Generate Invoice
-        </Button>
+        <div className="w-full max-w-sm rounded-xl border bg-card text-card-foreground shadow-sm p-6 space-y-3">
+          <div className="flex justify-between text-sm">
+            <span className="text-muted-foreground">Subtotal</span>
+            <span>₹{totals.subtotal.toFixed(2)}</span>
+          </div>
+          <div className="flex justify-between text-sm">
+             <span className="text-muted-foreground">Discount</span>
+             <span className="text-red-500">-₹{totals.discount.toFixed(2)}</span>
+          </div>
+          <div className="flex justify-between text-sm">
+             <span className="text-muted-foreground">GST</span>
+             <span>+₹{totals.tax.toFixed(2)}</span>
+          </div>
+          <div className="border-t pt-3 mt-3 flex justify-between items-center">
+            <span className="font-semibold text-lg">Total Amount</span>
+            <span className="font-bold text-2xl text-primary">₹{totals.total.toFixed(2)}</span>
+          </div>
+        </div>
       </div>
     </div>
   );

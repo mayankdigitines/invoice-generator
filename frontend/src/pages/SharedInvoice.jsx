@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { PDFViewer } from '@react-pdf/renderer';
+import { PDFViewer, PDFDownloadLink } from '@react-pdf/renderer';
+import { Loader2, Download } from 'lucide-react';
 import api from '../api';
 import { InvoicePDF } from '../components/InvoicePDF';
-import { Loader2 } from 'lucide-react';
+import { Button } from '../components/ui/button';
 
 export default function SharedInvoice() {
   const { id } = useParams();
@@ -79,8 +80,8 @@ export default function SharedInvoice() {
         </div>
       </div>
 
-      {/* PDF Viewer */}
-      <div className="flex-1 w-full h-full">
+      {/* PDF Viewer for Desktop */}
+      <div className="hidden md:block flex-1 w-full h-full">
         <PDFViewer
           width="100%"
           height="100%"
@@ -89,6 +90,62 @@ export default function SharedInvoice() {
         >
           <InvoicePDF invoice={invoice} business={business} />
         </PDFViewer>
+      </div>
+
+      {/* Mobile View - Simple */}
+      <div className="md:hidden flex-1 w-full flex flex-col items-center justify-center p-6 bg-gray-50">
+        <div className="w-full max-w-sm bg-white p-6 rounded-lg shadow-sm border border-gray-200 space-y-6">
+          <div className="text-center space-y-1">
+            <h2 className="text-xl font-semibold text-gray-900">
+              {business?.businessName || 'Invoice'}
+            </h2>
+            <p className="text-sm text-gray-500">Ready for download</p>
+          </div>
+
+          <div className="space-y-3 text-sm">
+            <div className="flex justify-between py-2 border-b border-gray-100">
+              <span className="text-gray-500">Invoice No.</span>
+              <span className="font-medium text-gray-900">{invoice.invoiceNumber}</span>
+            </div>
+            <div className="flex justify-between py-2 border-b border-gray-100">
+              <span className="text-gray-500">Date</span>
+              <span className="font-medium text-gray-900">
+                {new Date(invoice.createdAt).toLocaleDateString()}
+              </span>
+            </div>
+            <div className="flex justify-between py-2 border-b border-gray-100">
+              <span className="text-gray-500">Billed To</span>
+              <span className="font-medium text-gray-900 truncate max-w-37.5 text-right">
+                {invoice.customer?.name || 'N/A'}
+              </span>
+            </div>
+          </div>
+
+          <PDFDownloadLink
+            document={<InvoicePDF invoice={invoice} business={business} />}
+            fileName={`Invoice-${invoice.invoiceNumber}.pdf`}
+            className="w-full block"
+          >
+            {({ blob, url, loading, error }) => (
+              <Button
+                disabled={loading}
+                className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white font-medium"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Preparing...
+                  </>
+                ) : (
+                  <>
+                    <Download className="mr-2 h-4 w-4" />
+                    Download Invoice
+                  </>
+                )}
+              </Button>
+            )}
+          </PDFDownloadLink>
+        </div>
       </div>
     </div>
   );

@@ -17,7 +17,9 @@ const app = express();
 connectDB();
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: '*' // Allow all URLs
+}));
 app.use(express.json()); // Parse JSON bodies
 app.use(morgan('dev')); // Logging
 

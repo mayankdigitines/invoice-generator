@@ -7,7 +7,7 @@
   "type": "commonjs",
   "main": "server.js",
   "scripts": {
-    "dev": "node --watch server.js"
+    "dev": "npx nodemon server.js"
   },
   "dependencies": {
     "cors": "^2.8.6",

@@ -1,10 +1,33 @@
 const Item = require('../models/Item');
 
-// Get all items
+// Get all items with Pagination & Search
 exports.getItems = async (req, res, next) => {
   try {
-    const items = await Item.find();
-    res.json(items);
+    // If 'all' query param is present, return all items (for dropdowns)
+    if (req.query.all === 'true') {
+      const items = await Item.find().sort({ name: 1 });
+      return res.json(items);
+    }
+
+    const { page = 1, limit = 10, search = '' } = req.query;
+    const skip = (page - 1) * limit;
+
+    const query = {};
+    if (search) {
+      query.name = { $regex: search, $options: 'i' };
+    }
+
+    const [items, total] = await Promise.all([
+      Item.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit),
+      Item.countDocuments(query),
+    ]);
+
+    res.json({
+      items,
+      currentPage: Number(page),
+      totalPages: Math.ceil(total / limit),
+      totalItems: total,
+    });
   } catch (error) {
     next(error);
   }

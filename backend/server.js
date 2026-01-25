@@ -1,4 +1,4 @@
-require('dotenv').config();
+require('dotenv').config({ quiet: true });
 const express = require('express');
 const connectDB = require('./config/db');
 const cors = require('cors');
@@ -20,9 +20,6 @@ connectDB();
 app.use(cors());
 app.use(express.json()); // Parse JSON bodies
 app.use(morgan('dev')); // Logging
-
-// Static Folder for Invoices (So you can download them via link)
-app.use('/invoices', express.static(path.join(__dirname, 'invoices')));
 
 // Routes
 app.use('/api/business', businessRoutes);

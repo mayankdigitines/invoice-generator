@@ -1,160 +1,335 @@
 import { useEffect, useState } from 'react';
-import api from '../api';
+import api from '@/api';
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
   CardFooter,
-} from '../components/ui/card.tsx';
-import InvoiceDownloadButton from '../components/InvoiceDownloadButton';
-import { Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
-import { Button } from '../components/ui/button';
+} from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import {
+  Loader2,
+  ChevronLeft,
+  ChevronRight,
+  Search,
+  Calendar as CalendarIcon,
+  X,
+  FileText,
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
+import { Calendar } from '@/components/ui/calendar';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 
 export default function History() {
   const [invoices, setInvoices] = useState([]);
-  const [business, setBusiness] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 6;
 
+  // Query Params
+  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState('');
+  const [dateRange, setDateRange] = useState({
+    start: undefined,
+    end: undefined,
+  });
+  const [debouncedSearch, setDebouncedSearch] = useState(search);
+
+  // Pagination meta
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalInvoices, setTotalInvoices] = useState(0);
+
+  // Debounce search
   useEffect(() => {
-    // We need both Invoices and Business Profile to generate PDFs
-    const fetchData = async () => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(1); // Reset to page 1 on new search
+    }, 500);
+    return () => clearTimeout(handler);
+  }, [search]);
+
+  // Fetch Invoices (On params change)
+  useEffect(() => {
+    const fetchInvoices = async () => {
+      setLoading(true);
       try {
-        const [invRes, busRes] = await Promise.all([
-          api.get('/invoices'),
-          api.get('/business'),
-        ]);
-        setInvoices(invRes.data);
-        setBusiness(busRes.data);
+        const params = {
+          page,
+          limit: 10,
+          search: debouncedSearch,
+          startDate: dateRange.start
+            ? format(dateRange.start, 'yyyy-MM-dd')
+            : '',
+          endDate: dateRange.end ? format(dateRange.end, 'yyyy-MM-dd') : '',
+        };
+        const { data } = await api.get('/invoices', { params });
+        setInvoices(data.invoices);
+        setTotalPages(data.totalPages);
+        setTotalInvoices(data.totalInvoices);
       } catch (err) {
         console.error('Error loading history:', err);
       } finally {
         setLoading(false);
       }
     };
-    fetchData();
-  }, []);
 
-  if (loading)
-    return (
-      <div className="flex justify-center p-10">
-        <Loader2 className="animate-spin" />
-      </div>
-    );
+    fetchInvoices();
+  }, [page, debouncedSearch, dateRange]);
 
-  const indexOfLastItem = currentPage * itemsPerPage;
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentItems = invoices.slice(indexOfFirstItem, indexOfLastItem);
-  const totalPages = Math.ceil(invoices.length / itemsPerPage);
-
-  const handlePrevious = () => {
-    setCurrentPage((prev) => Math.max(prev - 1, 1));
-  };
-
-  const handleNext = () => {
-    setCurrentPage((prev) => Math.min(prev + 1, totalPages));
+  const clearFilters = () => {
+    setSearch('');
+    setDateRange({ start: undefined, end: undefined });
+    setPage(1);
   };
 
   return (
-    <div className="space-y-6">
-      <h2 className="text-3xl font-bold tracking-tight">Invoice History</h2>
+    <div className="space-y-6 max-w-7xl mx-auto">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-3xl font-bold tracking-tight">Invoice History</h2>
+          <p className="text-muted-foreground mt-1">
+            View and manage your generated invoices.
+          </p>
+        </div>
+      </div>
 
-      <Card className="overflow-hidden p-0 gap-0">
-        <CardHeader className="px-6 py-4 border-b">
-          <CardTitle>All Invoices</CardTitle>
-        </CardHeader>
+      {/* Filters Section */}
+      <Card className="p-4">
+        <div className="flex flex-col lg:flex-row gap-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by Invoice # or Customer..."
+              className="pl-9"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant={'outline'}
+                  className={cn(
+                    'w-full sm:w-60 justify-start text-left font-normal bg-background px-3 py-1 h-9 shadow-sm hover:bg-background',
+                    !dateRange.start && 'text-muted-foreground',
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {dateRange.start ? (
+                    format(dateRange.start, 'PPP')
+                  ) : (
+                    <span>From Date</span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={dateRange.start}
+                  onSelect={(date) =>
+                    setDateRange({ ...dateRange, start: date })
+                  }
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant={'outline'}
+                  className={cn(
+                    'w-full sm:w-60 justify-start text-left font-normal bg-background px-3 py-1 h-9 shadow-sm hover:bg-background',
+                    !dateRange.end && 'text-muted-foreground',
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {dateRange.end ? (
+                    format(dateRange.end, 'PPP')
+                  ) : (
+                    <span>To Date</span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={dateRange.end}
+                  onSelect={(date) => setDateRange({ ...dateRange, end: date })}
+                  disabled={(date) =>
+                    dateRange.start ? date < dateRange.start : false
+                  }
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+
+            {(search || dateRange.start || dateRange.end) && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={clearFilters}
+                className="h-9 w-9 text-muted-foreground hover:text-foreground hover:bg-muted"
+                title="Clear Filters"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+        </div>
+      </Card>
+
+      {/* Table Section */}
+      <Card className="overflow-hidden p-0 gap-0 border-muted/60 shadow-sm">
         <CardContent className="p-0">
           <div className="relative w-full overflow-auto">
             <table className="w-full caption-bottom text-sm text-left">
-              <thead className="[&_tr]:border-b">
+              <thead className="[&_tr]:border-b bg-muted/50">
                 <tr className="border-b transition-colors hover:bg-muted/50">
-                  <th className="h-12 px-4 align-middle font-medium">
+                  <th className="h-12 px-4 align-middle font-medium whitespace-nowrap">
                     Invoice #
                   </th>
-                  <th className="h-12 px-4 align-middle font-medium">
+                  <th className="h-12 px-4 align-middle font-medium whitespace-nowrap">
                     Customer
                   </th>
-                  <th className="h-12 px-4 align-middle font-medium">Date</th>
-                  <th className="h-12 px-4 align-middle font-medium text-right">
+                  <th className="h-12 px-4 align-middle font-medium whitespace-nowrap">
+                    Date
+                  </th>
+                  <th className="h-12 px-4 align-middle font-medium text-right whitespace-nowrap">
                     Amount
                   </th>
-                  <th className="h-12 px-4 align-middle font-medium text-right">
+                  <th className="h-12 px-4 align-middle font-medium text-right whitespace-nowrap">
                     Action
                   </th>
                 </tr>
               </thead>
               <tbody className="[&_tr:last-child]:border-0">
-                {invoices.length === 0 && (
+                {loading ? (
+                  <tr>
+                    <td colSpan={5} className="h-32 text-center">
+                      <div className="flex justify-center items-center h-full">
+                        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                        <span className="ml-2 text-muted-foreground">
+                          Loading invoices...
+                        </span>
+                      </div>
+                    </td>
+                  </tr>
+                ) : invoices.length === 0 ? (
                   <tr>
                     <td
                       colSpan={5}
-                      className="p-4 text-center text-muted-foreground"
+                      className="h-32 text-center text-muted-foreground"
                     >
-                      No invoices found
+                      No invoices found matching your criteria.
                     </td>
                   </tr>
+                ) : (
+                  invoices.map((inv) => (
+                    <tr
+                      key={inv._id}
+                      className="border-b transition-colors hover:bg-muted/40"
+                    >
+                      <td className="p-3 align-middle font-medium">
+                        {inv.invoiceNumber}
+                      </td>
+                      <td className="p-3 align-middle">
+                        <div className="flex flex-col">
+                          <span className="font-medium">
+                            {inv.customer?.name || 'Unknown'}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {inv.customer?.phone}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="p-3 align-middle">
+                        <div className="flex flex-col">
+                          <span className="font-medium">
+                            {new Date(inv.createdAt).toLocaleDateString(
+                              undefined,
+                              {
+                                year: 'numeric',
+                                month: 'short',
+                                day: 'numeric',
+                              },
+                            )}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {new Date(inv.createdAt).toLocaleTimeString(
+                              undefined,
+                              {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                                hour12: true,
+                              },
+                            )}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="p-3 align-middle text-right font-medium">
+                        ₹{inv.grandTotal.toFixed(2)}
+                      </td>
+                      <td className="p-3 align-middle text-right">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="gap-2"
+                          onClick={() =>
+                            window.open(
+                              `${window.location.origin}/share/${inv._id}`,
+                              '_blank',
+                            )
+                          }
+                        >
+                          <FileText className="w-4 h-4" /> Download
+                        </Button>
+                      </td>
+                    </tr>
+                  ))
                 )}
-                {currentItems.map((inv) => (
-                  <tr
-                    key={inv._id}
-                    className="border-b transition-colors hover:bg-muted/50"
-                  >
-                    <td className="p-4 align-middle font-medium">
-                      {inv.invoiceNumber}
-                    </td>
-                    <td className="p-4 align-middle">
-                      {inv.customer?.name || 'Unknown'}
-                    </td>
-                    <td className="p-4 align-middle">
-                      {new Date(inv.createdAt).toLocaleDateString()}
-                    </td>
-                    <td className="p-4 align-middle text-right">
-                      ₹{inv.grandTotal.toFixed(2)}
-                    </td>
-                    <td className="p-4 align-middle text-right">
-                      {/* Using the new Frontend PDF Generator Button */}
-                      {business && (
-                        <InvoiceDownloadButton
-                          invoice={inv}
-                          business={business}
-                        />
-                      )}
-                    </td>
-                  </tr>
-                ))}
               </tbody>
             </table>
           </div>
         </CardContent>
-        <CardFooter className="flex items-center justify-between border-t p-4 bg-muted/10">
-          <div className="text-xs text-muted-foreground whitespace-nowrap">
-            Showing <strong>{invoices.length > 0 ? indexOfFirstItem + 1 : 0}-{Math.min(indexOfLastItem, invoices.length)}</strong> of <strong>{invoices.length}</strong> invoices
-          </div>
-          <div className="flex items-center space-x-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handlePrevious}
-              disabled={currentPage === 1}
-              className="h-8 px-2 lg:px-3 hover:cursor-pointer"
-            >
-              <ChevronLeft className="mr-1 h-4 w-4" />
-              Previous
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleNext}
-              disabled={currentPage === totalPages || totalPages === 0}
-              className="h-8 px-2 lg:px-3 hover:cursor-pointer"
-            >
-              Next
-              <ChevronRight className="ml-1 h-4 w-4" />
-            </Button>
-          </div>
-        </CardFooter>
+
+        {/* Pagination Footer */}
+        {!loading && totalPages > 0 && (
+          <CardFooter className="flex flex-col sm:flex-row items-center justify-between border-t p-4 bg-muted/20 gap-4">
+            <div className="text-sm text-muted-foreground order-2 sm:order-1">
+              Page <strong>{page}</strong> of <strong>{totalPages}</strong> (
+              {totalInvoices} results)
+            </div>
+            <div className="flex items-center space-x-2 order-1 sm:order-2 w-full sm:w-auto justify-between sm:justify-end">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className="h-8 px-3"
+              >
+                <ChevronLeft className="mr-1 h-4 w-4" />
+                Previous
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+                className="h-8 px-3"
+              >
+                Next
+                <ChevronRight className="ml-1 h-4 w-4" />
+              </Button>
+            </div>
+          </CardFooter>
+        )}
       </Card>
     </div>
   );

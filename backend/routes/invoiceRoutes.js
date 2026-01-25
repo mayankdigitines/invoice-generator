@@ -5,10 +5,11 @@ const {
   getInvoiceById,
   getCustomerInvoices,
   getAllInvoices,
+  getInvoicePdf,
 } = require('../controllers/invoiceController');
 
 // Save invoice data
-router.post('/generate', createInvoice);
+router.post('/create', createInvoice);
 
 // Get single invoice by ID
 router.get('/:id', getInvoiceById);

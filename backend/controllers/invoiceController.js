@@ -1,5 +1,4 @@
 const Invoice = require('../models/Invoice');
-const Business = require('../models/Business');
 const Item = require('../models/Item');
 const Customer = require('../models/Customer');
 
@@ -99,13 +98,53 @@ exports.getCustomerInvoices = async (req, res, next) => {
   }
 };
 
-// 4. Get All Invoices (With Customer Details)
+// 4. Get All Invoices (With Pagination, Filtering & Search)
 exports.getAllInvoices = async (req, res, next) => {
   try {
-    const invoices = await Invoice.find()
+    const { page = 1, limit = 10, search = '', startDate, endDate } = req.query;
+
+    const query = {};
+
+    // Date Filter
+    if (startDate || endDate) {
+      query.createdAt = {};
+      if (startDate) query.createdAt.$gte = new Date(startDate);
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        query.createdAt.$lte = end;
+      }
+    }
+
+    // Search Logic (Invoice Number OR Customer Name)
+    if (search) {
+      // Find customers matching the search name
+      const customers = await Customer.find({
+        name: { $regex: search, $options: 'i' },
+      }).select('_id');
+
+      const customerIds = customers.map((c) => c._id);
+
+      query.$or = [
+        { invoiceNumber: { $regex: search, $options: 'i' } },
+        { customer: { $in: customerIds } },
+      ];
+    }
+
+    const invoices = await Invoice.find(query)
       .populate('customer')
-      .sort({ createdAt: -1 });
-    res.json(invoices);
+      .sort({ createdAt: -1 })
+      .limit(limit * 1)
+      .skip((page - 1) * limit);
+
+    const count = await Invoice.countDocuments(query);
+
+    res.json({
+      invoices,
+      totalPages: Math.ceil(count / limit),
+      currentPage: Number(page),
+      totalInvoices: count,
+    });
   } catch (error) {
     next(error);
   }

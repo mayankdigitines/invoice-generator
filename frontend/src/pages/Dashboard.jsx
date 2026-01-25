@@ -199,7 +199,7 @@ export default function Dashboard() {
   };
 
   // --- Success View ---
-  if (isSuccess && generatedInvoice && business) {
+  if (isSuccess && generatedInvoice) {
     const shareUrl = `${window.location.origin}/share/${generatedInvoice._id}`;
 
     return (

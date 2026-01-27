@@ -102,9 +102,26 @@ exports.getCustomerInvoices = async (req, res, next) => {
 exports.updateInvoice = async (req, res, next) => {
   try {
     const { items, customer } = req.body;
-    let updateData = req.body;
+    let updateData = { ...req.body };
 
-    // Recalculate totals if items change
+    // A. Update Customer Info if provided
+    if (customer && customer.phone) {
+        let customerDoc = await Customer.findOne({ phone: customer.phone });
+        if (customerDoc) {
+             // Update existing customer details
+             customerDoc.name = customer.name;
+             customerDoc.address = customer.address;
+             await customerDoc.save();
+             updateData.customer = customerDoc._id;
+        } else {
+             // Create new if somehow not found (or changed phone entirely)
+             customerDoc = new Customer(customer);
+             await customerDoc.save();
+             updateData.customer = customerDoc._id;
+        }
+    }
+
+    // B. Recalculate totals if items change
     if (items) {
       let totalAmount = 0;
       let totalTax = 0;
@@ -119,7 +136,11 @@ exports.updateInvoice = async (req, res, next) => {
         totalTax += taxAmount;
 
         return {
-          ...item,
+          itemName: item.name, // Ensure strict mapping
+          quantity: item.quantity,
+          price: item.price,
+          gstRate: item.gstRate,
+          discount: item.discount,
           amount: taxableAmount + taxAmount,
         };
       });
@@ -128,14 +149,6 @@ exports.updateInvoice = async (req, res, next) => {
       updateData.totalAmount = totalAmount;
       updateData.taxAmount = totalTax;
       updateData.grandTotal = totalAmount + totalTax;
-    }
-    
-    // Update Customer info if provided
-    if (customer && customer.phone) {
-        let customerDoc = await Customer.findOne({ phone: customer.phone });
-        if (customerDoc) {
-             updateData.customer = customerDoc._id;
-        }
     }
 
     const invoice = await Invoice.findByIdAndUpdate(

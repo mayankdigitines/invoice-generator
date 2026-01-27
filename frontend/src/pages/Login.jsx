@@ -53,7 +53,12 @@ export default function Login() {
 
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-muted/20 relative overflow-hidden text-foreground">
-      <Card className="w-full max-w-sm border-border bg-card shadow-lg">
+      {/* Grid Background */}
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]"></div>
+      {/* Subtle Glow */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-96 bg-primary/10 blur-[100px] -z-10 rounded-full"></div>
+
+      <Card className="w-full max-w-sm border-border bg-card shadow-lg relative z-10">
         <CardHeader className="space-y-2 pb-4 text-center">
           <div className="mx-auto w-10 h-10 bg-primary/10 text-primary rounded-lg flex items-center justify-center">
             <ShieldCheck className="h-5 w-5" />

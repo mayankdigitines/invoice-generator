@@ -52,22 +52,17 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-slate-950 relative overflow-hidden text-slate-200">
-      {/* Professional Dark Background Decor */}
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#cbd5e10a_1px,transparent_1px),linear-gradient(to_bottom,#cbd5e10a_1px,transparent_1px)] bg-[size:24px_24px]" />
-      {/* Subtle top glow */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-96 bg-blue-900/20 blur-[100px] -z-10 rounded-full" />
-      
-      <Card className="w-full max-w-sm border-slate-800 bg-slate-900/50 backdrop-blur-xl shadow-2xl shadow-black/40">
+    <div className="min-h-screen w-full flex items-center justify-center bg-muted/20 relative overflow-hidden text-foreground">
+      <Card className="w-full max-w-sm border-border bg-card shadow-lg">
         <CardHeader className="space-y-2 pb-4 text-center">
-          <div className="mx-auto w-10 h-10 bg-blue-600 text-white rounded-lg flex items-center justify-center shadow-lg shadow-blue-500/20">
+          <div className="mx-auto w-10 h-10 bg-primary/10 text-primary rounded-lg flex items-center justify-center">
             <ShieldCheck className="h-5 w-5" />
           </div>
           <div className="space-y-1">
-            <CardTitle className="text-xl font-bold tracking-tight text-white">
+            <CardTitle className="text-xl font-bold tracking-tight">
               {isRegistering ? 'Register' : 'Login'}
             </CardTitle>
-            <CardDescription className="text-slate-400 text-xs">
+            <CardDescription className="text-muted-foreground text-xs">
               {isRegistering
                 ? 'Create a new account'
                 : 'Sign in to access dashboard'}
@@ -77,47 +72,47 @@ export default function Login() {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <label className="text-[10px] font-medium uppercase tracking-wider text-slate-400">
+              <label className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
                 Email
               </label>
               <div className="relative group">
-                <Mail className="absolute left-3 top-2.5 h-4 w-4 text-slate-500 group-focus-within:text-white transition-colors" />
+                <Mail className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground transition-colors group-focus-within:text-foreground" />
                 <Input
                   type="email"
                   placeholder="name@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="pl-9 h-9 bg-slate-950/50 border-slate-800 text-slate-100 placeholder:text-slate-600 focus:border-blue-500/50 focus:ring-blue-500/20 focus:bg-slate-950 transition-all text-sm"
+                  className="pl-9 h-9"
                   required
                 />
               </div>
             </div>
             <div className="space-y-2">
-              <label className="text-[10px] font-medium uppercase tracking-wider text-slate-400">
+              <label className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
                 Password
               </label>
               <div className="relative group">
-                <Lock className="absolute left-3 top-2.5 h-4 w-4 text-slate-500 group-focus-within:text-white transition-colors" />
+                <Lock className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground transition-colors group-focus-within:text-foreground" />
                 <Input
                   type="password"
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="pl-9 h-9 bg-slate-950/50 border-slate-800 text-slate-100 placeholder:text-slate-600 focus:border-blue-500/50 focus:ring-blue-500/20 focus:bg-slate-950 transition-all text-sm"
+                  className="pl-9 h-9"
                   required
                 />
               </div>
             </div>
 
             {error && (
-              <div className="p-2 text-xs text-red-400 bg-red-950/30 border border-red-500/20 rounded-md font-medium text-center animate-in fade-in slide-in-from-top-1">
+              <div className="p-2 text-xs text-destructive bg-destructive/10 border border-destructive/20 rounded-md font-medium text-center animate-in fade-in slide-in-from-top-1">
                 {error}
               </div>
             )}
 
             <Button
               type="submit"
-              className="w-full h-9 text-sm bg-blue-600 text-white hover:bg-blue-700 font-semibold shadow-lg shadow-blue-500/20 transition-all"
+              className="w-full h-9 text-sm font-semibold transition-all"
               disabled={loading}
             >
               {loading ? (
@@ -136,12 +131,12 @@ export default function Login() {
         <CardFooter className="flex flex-col gap-3 text-center pb-6 pt-0">
           <div className="relative w-full">
             <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t border-slate-800" />
+              <span className="w-full border-t border-border" />
             </div>
           </div>
           <Button
             variant="ghost"
-            className="w-full h-8 text-xs text-slate-400 hover:text-white hover:bg-slate-800"
+            className="w-full h-8 text-xs text-muted-foreground hover:text-foreground"
             onClick={() => {
                 setError('');
                 setIsRegistering(!isRegistering);
@@ -154,7 +149,7 @@ export default function Login() {
         </CardFooter>
       </Card>
 
-      <div className="absolute bottom-4 text-center text-[10px] text-slate-600">
+      <div className="absolute bottom-4 text-center text-[10px] text-muted-foreground/60">
         &copy; {new Date().getFullYear()} Invoice Generator. All rights reserved.
       </div>
     </div>

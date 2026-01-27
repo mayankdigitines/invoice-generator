@@ -98,7 +98,71 @@ exports.getCustomerInvoices = async (req, res, next) => {
   }
 };
 
-// 4. Get All Invoices (With Pagination, Filtering & Search)
+// 4. Update Invoice
+exports.updateInvoice = async (req, res, next) => {
+  try {
+    const { items, customer } = req.body;
+    let updateData = req.body;
+
+    // Recalculate totals if items change
+    if (items) {
+      let totalAmount = 0;
+      let totalTax = 0;
+
+      const processedItems = items.map((item) => {
+        const baseTotal = item.price * item.quantity;
+        const discountAmount = (baseTotal * (item.discount || 0)) / 100;
+        const taxableAmount = baseTotal - discountAmount;
+        const taxAmount = (taxableAmount * (item.gstRate || 0)) / 100;
+
+        totalAmount += taxableAmount;
+        totalTax += taxAmount;
+
+        return {
+          ...item,
+          amount: taxableAmount + taxAmount,
+        };
+      });
+
+      updateData.items = processedItems;
+      updateData.totalAmount = totalAmount;
+      updateData.taxAmount = totalTax;
+      updateData.grandTotal = totalAmount + totalTax;
+    }
+    
+    // Update Customer info if provided
+    if (customer && customer.phone) {
+        let customerDoc = await Customer.findOne({ phone: customer.phone });
+        if (customerDoc) {
+             updateData.customer = customerDoc._id;
+        }
+    }
+
+    const invoice = await Invoice.findByIdAndUpdate(
+      req.params.id,
+      updateData,
+      { new: true }
+    ).populate('customer');
+
+    if (!invoice) return res.status(404).json({ message: 'Invoice not found' });
+    res.json(invoice);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// 5. Delete Invoice
+exports.deleteInvoice = async (req, res, next) => {
+  try {
+    const invoice = await Invoice.findByIdAndDelete(req.params.id);
+    if (!invoice) return res.status(404).json({ message: 'Invoice not found' });
+    res.json({ message: 'Invoice deleted successfully' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// 6. Get All Invoices (With Pagination, Filtering & Search)
 exports.getAllInvoices = async (req, res, next) => {
   try {
     const { page = 1, limit = 10, search = '', startDate, endDate } = req.query;

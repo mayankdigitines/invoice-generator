@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import api from '@/api';
+import { useNavigate } from 'react-router-dom';
 import {
   Card,
   CardContent,
@@ -16,6 +17,8 @@ import {
   Calendar as CalendarIcon,
   X,
   FileText,
+  Trash2,
+  Edit,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
@@ -26,10 +29,23 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 export default function History() {
   const [invoices, setInvoices] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState(null);
+  const navigate = useNavigate();
 
   // Query Params
   const [page, setPage] = useState(1);
@@ -85,6 +101,20 @@ export default function History() {
     setSearch('');
     setDateRange({ start: undefined, end: undefined });
     setPage(1);
+  };
+
+  const handleDelete = async (id) => {
+      try {
+        setDeletingId(id);
+        await api.delete(`/invoices/${id}`);
+        setInvoices((prev) => prev.filter((inv) => inv._id !== id));
+        setTotalInvoices((prev) => prev - 1);
+      } catch (error) {
+        console.error('Failed to delete invoice:', error);
+        alert('Failed to delete invoice');
+      } finally {
+        setDeletingId(null);
+      }
   };
 
   return (
@@ -204,8 +234,8 @@ export default function History() {
                   <th className="h-12 px-4 align-middle font-medium text-right whitespace-nowrap">
                     Amount
                   </th>
-                  <th className="h-12 px-4 align-middle font-medium text-right whitespace-nowrap">
-                    Action
+                  <th className="h-12 px-4 py-2 align-middle font-medium text-center whitespace-nowrap">
+                    Actions
                   </th>
                 </tr>
               </thead>
@@ -276,11 +306,12 @@ export default function History() {
                       <td className="p-3 align-middle text-right font-medium">
                         ₹{inv.grandTotal.toFixed(2)}
                       </td>
-                      <td className="p-3 align-middle text-right">
+                      <td className="p-3 align-middle text-right grid grid-flow-col gap-2 justify-end">
                         <Button
-                          variant="outline"
-                          size="sm"
-                          className="gap-2"
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                          title="Download"
                           onClick={() =>
                             window.open(
                               `${window.location.origin}/share/${inv._id}`,
@@ -288,8 +319,48 @@ export default function History() {
                             )
                           }
                         >
-                          <FileText className="w-4 h-4" /> Download
+                          <FileText className="w-4 h-4" />
                         </Button>
+
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                          title="Edit"
+                          onClick={() => navigate(`/edit/${inv._id}`)}
+                        >
+                          <Edit className="w-4 h-4" />
+                        </Button>
+
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50"
+                              title="Delete"
+                            >
+                              {deletingId === inv._id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This action cannot be undone. This will permanently delete invoice #{inv.invoiceNumber} from your database.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction 
+                                onClick={() => handleDelete(inv._id)}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              >
+                                Delete
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       </td>
                     </tr>
                   ))

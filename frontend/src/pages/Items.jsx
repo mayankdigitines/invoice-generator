@@ -152,7 +152,7 @@ export default function Items() {
     <div className="space-y-6 max-w-7xl mx-auto">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Inventory</h2>
+          <h2 className="text-3xl font-bold tracking-tight">Items Manage</h2>
           <p className="text-muted-foreground mt-1">
             Manage your products and services here.
           </p>
@@ -166,7 +166,7 @@ export default function Items() {
       </div>
 
       {/* Filters Section */}
-      <Card classname="p-4">
+      <Card className="p-4">
         <div className="flex flex-col sm:flex-row items-center gap-2 max-w-sm w-full">
           <div className="relative flex-1 w-full">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -224,7 +224,7 @@ export default function Items() {
                       <div className="flex justify-center items-center h-full">
                         <Loader2 className="h-6 w-6 animate-spin text-primary" />
                         <span className="ml-2 text-muted-foreground">
-                          Loading inventory...
+                          Loading items...
                         </span>
                       </div>
                     </td>

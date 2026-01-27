@@ -1,23 +1,29 @@
 const express = require('express');
 const router = express.Router();
+const { protect } = require('../middleware/authMiddleware');
 const {
   createInvoice,
   getInvoiceById,
   getCustomerInvoices,
   getAllInvoices,
-  getInvoicePdf,
+  updateInvoice,
+  deleteInvoice
 } = require('../controllers/invoiceController');
 
 // Save invoice data
-router.post('/create', createInvoice);
+router.post('/create', protect, createInvoice);
 
-// Get single invoice by ID
+// Get single invoice by ID (Public for shared link)
 router.get('/:id', getInvoiceById);
 
+// Update/Delete Invoice
+router.put('/:id', protect, updateInvoice);
+router.delete('/:id', protect, deleteInvoice);
+
 // Get invoices for a specific customer
-router.get('/customer/:customerId', getCustomerInvoices);
+router.get('/customer/:customerId', protect, getCustomerInvoices);
 
 // Get all invoices with customer details
-router.get('/', getAllInvoices);
+router.get('/', protect, getAllInvoices);
 
 module.exports = router;

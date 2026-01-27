@@ -1,8 +1,17 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import api from '../api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import {
   Trash2,
   Plus,
@@ -12,12 +21,20 @@ import {
   Loader2,
   Copy,
   Check,
+  AlertCircle,
+  Share2,
 } from 'lucide-react';
+import { validateInvoiceForm } from '../lib/validation';
 
 export default function Dashboard() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const isEditing = Boolean(id);
+
   const [loading, setLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [errors, setErrors] = useState({});
 
   // Invoice Form States
   const [customer, setCustomer] = useState({
@@ -49,10 +66,16 @@ export default function Dashboard() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [itemsRes, busRes] = await Promise.all([
+        const promises = [
           api.get('/items?all=true'), // Fetch all for dropdown
           api.get('/business'), // Business Profile
-        ]);
+        ];
+        
+        if (isEditing) {
+            promises.push(api.get(`/invoices/${id}`));
+        }
+
+        const [itemsRes, busRes, invoiceRes] = await Promise.all(promises);
 
         // Handle items response
         if (Array.isArray(itemsRes.data)) {
@@ -62,14 +85,37 @@ export default function Dashboard() {
         }
 
         setBusiness(busRes.data);
+
+        // Populate Invoice if Editing
+        if (invoiceRes && invoiceRes.data) {
+            const inv = invoiceRes.data;
+            setCustomer({
+                name: inv.customer?.name || '',
+                phone: inv.customer?.phone || '',
+                address: inv.customer?.address || '',
+            });
+            // Ensure items have all fields for editing
+            setItems(inv.items.map(i => ({
+                name: i.itemName || i.name,
+                quantity: i.quantity,
+                price: i.price,
+                gstRate: i.gstRate || 0,
+                discount: i.discount || 0
+            })));
+        }
+
       } catch (err) {
         console.error('Failed to load dashboard data', err);
+        if (isEditing) {
+             alert("Failed to load invoice details");
+             navigate('/history');
+        }
       } finally {
         setLoading(false);
       }
     };
     fetchData();
-  }, []);
+  }, [id, isEditing, navigate]);
 
   // --- Debounced Search ---
   useEffect(() => {
@@ -166,31 +212,40 @@ export default function Dashboard() {
   }, [items]);
 
   const handleSubmit = async () => {
-    // Basic validation
-    if (!customer.name || !customer.phone) {
-      alert('Please provide customer details');
-      return;
-    }
-    // Allow 0 price items (e.g. free samples) but ensure name exists
-    if (items.some((i) => !i.name || i.price < 0)) {
-      alert('Please ensure all items have valid names and non-negative prices');
+    // Run Validation
+    const { isValid, errors: validationErrors } = validateInvoiceForm(customer, items);
+    setErrors(validationErrors);
+
+    if (!isValid) {
+      // Find the first error to scroll to or alert
+      const firstError = Object.values(validationErrors)[0];
+      // alert(`Form Error: ${firstError}`); // Optional: keep purely visual
       return;
     }
 
     setIsGenerating(true);
     try {
-      const res = await api.post('/invoices/create', { customer, items });
+      let res;
+      if (isEditing) {
+        res = await api.put(`/invoices/${id}`, { customer, items });
+      } else {
+        res = await api.post('/invoices/create', { customer, items });
+      }
       setGeneratedInvoice(res.data);
       setIsSuccess(true);
     } catch (err) {
-      alert('Error creating invoice');
-      console.error('Error creating invoice', err?.message);
+      alert(`Error ${isEditing ? 'updating' : 'creating'} invoice`);
+      console.error('Error handling invoice', err?.message);
     } finally {
       setIsGenerating(false);
     }
   };
 
   const resetForm = () => {
+    if (isEditing) {
+        navigate('/'); // Go back to create mode
+        return;
+    }
     setCustomer({ name: '', phone: '', address: '' });
     setItems([{ name: '', quantity: 1, price: 0, gstRate: 18, discount: 0 }]);
     setIsSuccess(false);
@@ -210,7 +265,7 @@ export default function Dashboard() {
               <CheckCircle className="h-6 w-6" />
             </div>
             <div className="space-y-1">
-              <h2 className="text-xl font-semibold ">Invoice Created</h2>
+              <h2 className="text-xl font-semibold ">Invoice {isEditing ? 'Updated' : 'Created'}</h2>
               <p className="text-sm ">
                 Invoice{' '}
                 <span className="font-mono ">
@@ -231,35 +286,52 @@ export default function Dashboard() {
               View PDF
             </Button>
 
-            <div className="flex space-x-2">
-              <Input
-                readOnly
-                value={shareUrl}
-                className="h-9 text-xs font-mono bg-gray-50"
-              />
-              <Button
-                size="icon"
-                variant="outline"
-                className={`h-9 w-9 shrink-0 transition-all duration-200 ${
-                  copied ? 'bg-green-50 text-green-600 border-green-200' : ''
-                }`}
-                onClick={() => {
-                  navigator.clipboard.writeText(shareUrl);
-                  setCopied(true);
-                  setTimeout(() => setCopied(false), 2000);
-                }}
-              >
-                {copied ? (
-                  <Check className="h-4 w-4" />
-                ) : (
-                  <Copy className="h-4 w-4" />
-                )}
-              </Button>
-            </div>
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button variant="outline" className="w-full">
+                  <Share2 className="w-4 h-4 mr-2" />
+                  Share Invoice Link
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Share Invoice</DialogTitle>
+                  <DialogDescription>
+                    Copy the unique link below to share this invoice with your customer.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="flex items-center space-x-2 mt-2">
+                  <Input
+                    readOnly
+                    value={shareUrl}
+                    className="flex-1 font-mono text-sm bg-gray-50 h-10"
+                  />
+                  <Button
+                    size="icon"
+                    className={`shrink-0 transition-all duration-200 h-10 w-10 ${
+                      copied
+                        ? 'bg-green-600 hover:bg-green-700 text-white'
+                        : ''
+                    }`}
+                    onClick={() => {
+                      navigator.clipboard.writeText(shareUrl);
+                      setCopied(true);
+                      setTimeout(() => setCopied(false), 2000);
+                    }}
+                  >
+                    {copied ? (
+                      <Check className="h-4 w-4" />
+                    ) : (
+                      <Copy className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
           </div>
 
           <Button variant="outline" onClick={resetForm}>
-            Create New Invoice
+            {isEditing ? 'Start New Invoice' : 'Create New Invoice'}
           </Button>
         </div>
       </div>
@@ -282,10 +354,10 @@ export default function Dashboard() {
         <div className="flex justify-between items-center">
           <div>
             <h2 className="text-2xl font-bold tracking-tight">
-              Create Invoice
+              {isEditing ? 'Edit Invoice' : 'Create Invoice'}
             </h2>
             <p className="text-muted-foreground">
-              Enter customer and item details to generate a PDF.
+              {isEditing ? 'Modify invoice details below.' : 'Enter customer and item details to generate a PDF.'}
             </p>
           </div>
           <Button
@@ -296,11 +368,11 @@ export default function Dashboard() {
           >
             {isGenerating ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Generating...
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> {isEditing ? 'Updating...' : 'Generating...'}
               </>
             ) : (
               <>
-                <FileText className="mr-2 h-4 w-4" /> Generate Invoice
+                <FileText className="mr-2 h-4 w-4" /> {isEditing ? 'Update Invoice' : 'Generate Invoice'}
               </>
             )}
           </Button>
@@ -317,15 +389,23 @@ export default function Dashboard() {
               </CardHeader>
               <CardContent className="space-y-4 pt-4">
                 <div className="space-y-2 relative">
-                  <label className="text-xs font-semibold uppercase text-muted-foreground">
+                  <label className="text-xs font-semibold uppercase text-muted-foreground flex justify-between">
                     Phone Number
+                    {errors.customerPhone && <span className="text-red-500 font-normal normal-case">{errors.customerPhone}</span>}
                   </label>
                   <div className="relative">
                     <Input
                       placeholder="Search or enter phone..."
                       value={customer.phone}
-                      onChange={(e) => handleSearchChange(e.target.value)}
-                      className="pr-8 font-mono"
+                      maxLength={10} // Enforce 10 chars max
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/\D/g, ''); // Only allow numbers
+                        if (val.length <= 10) {
+                             handleSearchChange(val);
+                             if(errors.customerPhone) setErrors({...errors, customerPhone: null});
+                        }
+                      }}
+                      className={`pr-8 font-mono ${errors.customerPhone ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
                     />
                     <Search className="absolute right-2.5 top-2.5 h-4 w-4 text-muted-foreground opacity-50" />
                   </div>
@@ -348,20 +428,24 @@ export default function Dashboard() {
                   )}
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs font-semibold uppercase text-muted-foreground">
+                  <label className="text-xs font-semibold uppercase text-muted-foreground flex justify-between">
                     Full Name
+                    {errors.customerName && <span className="text-red-500 font-normal normal-case">{errors.customerName}</span>}
                   </label>
                   <Input
                     value={customer.name}
-                    onChange={(e) =>
-                      setCustomer({ ...customer, name: e.target.value })
-                    }
+                    onChange={(e) => {
+                      setCustomer({ ...customer, name: e.target.value });
+                      if(errors.customerName) setErrors({...errors, customerName: null});
+                    }}
                     placeholder="Customer Name"
+                    className={errors.customerName ? 'border-red-500 focus-visible:ring-red-500' : ''}
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs font-semibold uppercase text-muted-foreground">
-                    Address
+                  <label className="text-xs font-semibold uppercase text-muted-foreground flex justify-between">
+                     Address
+                     {errors.customerAddress && <span className="text-red-500 font-normal normal-case">{errors.customerAddress}</span>}
                   </label>
                   <Input
                     value={customer.address}
@@ -369,6 +453,7 @@ export default function Dashboard() {
                       setCustomer({ ...customer, address: e.target.value })
                     }
                     placeholder="Billing Address"
+                    className={errors.customerAddress ? 'border-red-500 focus-visible:ring-red-500' : ''}
                   />
                 </div>
               </CardContent>
@@ -388,7 +473,7 @@ export default function Dashboard() {
                   onClick={addItem}
                   className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
                 >
-                  <Plus className="h-4 w-4 mr-1" /> Add Line
+                  <Plus className="h-4 w-4 mr-1" /> Add Item
                 </Button>
               </CardHeader>
               <CardContent className="p-0">
@@ -399,6 +484,7 @@ export default function Dashboard() {
                   <div className="col-span-2 text-right">PRICE</div>
                   <div className="col-span-1 text-center">TAX%</div>
                   <div className="col-span-1 text-center">DISC%</div>
+                  {/*want to move total to little right */}
                   <div className="col-span-2 text-right">TOTAL</div>
                 </div>
 
@@ -423,19 +509,30 @@ export default function Dashboard() {
                           <Trash2 className="h-4 w-4" />
                         </button>
 
-                        <div className="w-full md:col-span-5 space-y-1">
+                        <div className="w-full md:col-span-5 space-y-1 relative">
                           <label className="text-xs text-muted-foreground md:hidden">
                             Item Name
                           </label>
                           <Input
                             list={`items-list-${index}`}
                             placeholder="Item name"
-                            className="h-9 md:h-8 text-sm"
+                            className={`h-9 md:h-8 text-sm ${errors[`item_${index}_name`] ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
                             value={item.name}
-                            onChange={(e) =>
-                              updateItem(index, 'name', e.target.value)
-                            }
+                            onChange={(e) => {
+                              updateItem(index, 'name', e.target.value);
+                              if (errors[`item_${index}_name`]) {
+                                const newErrors = { ...errors };
+                                delete newErrors[`item_${index}_name`];
+                                setErrors(newErrors);
+                              }
+                            }}
                           />
+                          {/* Inline Error Icon for Desktop */}
+                          {errors[`item_${index}_name`] && (
+                              <div className="absolute right-2 top-2 text-red-500 pointer-events-none hidden md:block" title={errors[`item_${index}_name`]}>
+                                  <AlertCircle className="h-4 w-4" />
+                              </div>
+                          )}
                           <datalist id={`items-list-${index}`}>
                             {inventory.map((inv) => (
                               <option key={inv._id} value={inv.name} />
@@ -444,12 +541,12 @@ export default function Dashboard() {
                         </div>
 
                         <div className="grid grid-cols-2 gap-4 w-full md:contents">
-                          <div className="md:col-span-1">
+                          <div className="md:col-span-1 relative">
                             <label className="text-xs text-muted-foreground md:hidden block mb-1">
                               Qty
                             </label>
                             <Input
-                              className="h-9 md:h-8 text-center px-1"
+                              className={`h-9 md:h-8 text-center px-1 ${errors[`item_${index}_quantity`] ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
                               type="number"
                               min={1}
                               value={item.quantity}
@@ -460,14 +557,19 @@ export default function Dashboard() {
                                   Number(e.target.value),
                                 )
                               }
+                              onBlur={(e) => {
+                                if(!e.target.value || Number(e.target.value) < 1) {
+                                    updateItem(index, 'quantity', 1);
+                                }
+                              }}
                             />
                           </div>
-                          <div className="md:col-span-2">
+                          <div className="md:col-span-2 relative">
                             <label className="text-xs text-muted-foreground md:hidden block mb-1">
                               Price
                             </label>
                             <Input
-                              className="h-9 md:h-8 text-right px-1"
+                              className={`h-9 md:h-8 text-right px-1 ${errors[`item_${index}_price`] ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
                               type="number"
                               min={0}
                               value={item.price}

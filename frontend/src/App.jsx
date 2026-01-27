@@ -6,6 +6,7 @@ import {
   Link,
   Outlet,
   useLocation,
+  Navigate,
 } from 'react-router-dom';
 import {
   Settings as SettingsIcon,
@@ -15,8 +16,10 @@ import {
   Loader2,
   Menu,
   X,
+  LogOut,
 } from 'lucide-react';
 import { ThemeProvider } from './context/ThemeContext.jsx';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { Button } from '@/components/ui/button';
 
 // Lazy Load Pages
@@ -25,6 +28,7 @@ const History = lazy(() => import('./pages/History'));
 const Settings = lazy(() => import('./pages/Settings'));
 const Items = lazy(() => import('./pages/Items'));
 const SharedInvoice = lazy(() => import('./pages/SharedInvoice'));
+const Login = lazy(() => import('./pages/Login'));
 
 function LoadingSpinner() {
   return (
@@ -34,9 +38,25 @@ function LoadingSpinner() {
   );
 }
 
+function RequireAuth({ children }) {
+  const { user, loading } = useAuth();
+  const location = useLocation();
+
+  if (loading) {
+    return <LoadingSpinner />;
+  }
+
+  if (!user) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  return children;
+}
+
 function Layout() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
+  const { logout, user } = useAuth();
 
   // Close mobile menu when route changes
   const handleNavClick = () => {
@@ -47,7 +67,9 @@ function Layout() {
     <div className="min-h-screen bg-muted/20 flex flex-col md:flex-row">
       {/* Mobile Header */}
       <header className="md:hidden h-16 border-b bg-background flex items-center justify-between px-4 sticky top-0 z-30 shadow-sm">
-        <div className="font-bold text-xl tracking-tight">InvoiceApp</div>
+        <Link to="/" className="font-bold text-xl tracking-tight">
+          InvoiceApp
+        </Link>
         <Button
           variant="ghost"
           size="icon"
@@ -90,7 +112,7 @@ function Layout() {
               onClick={handleNavClick}
               to="/items"
               icon={<Package size={20} />}
-              label="Inventory"
+              label="Items Manage"
               isActive={location.pathname === '/items'}
             />
             <NavItem
@@ -107,6 +129,15 @@ function Layout() {
               label="Settings"
               isActive={location.pathname === '/settings'}
             />
+            <div className="mt-auto border-t pt-4">
+                <div className="px-4 py-2 text-sm text-gray-500 truncate">
+                  {user?.email}
+                </div>
+                <Button variant="ghost" className="w-full justify-start text-red-500 hover:text-red-600 hover:bg-red-50" onClick={logout}>
+                   <LogOut className="mr-2 h-4 w-4" />
+                   Log Out
+                </Button>
+            </div>
           </nav>
         </div>
       )}
@@ -114,7 +145,9 @@ function Layout() {
       {/* Sidebar (Desktop) */}
       <aside className="w-64 bg-background border-r hidden md:flex flex-col sticky top-0 h-screen">
         <div className="h-16 flex items-center px-6 border-b font-bold text-xl tracking-tight">
-          InvoiceApp
+          <Link to="/" className="hover:text-primary transition-colors">
+            InvoiceApp
+          </Link>
         </div>
         <nav className="p-4 space-y-2 flex-1">
           <NavItem
@@ -126,7 +159,7 @@ function Layout() {
           <NavItem
             to="/items"
             icon={<Package size={20} />}
-            label="Inventory"
+            label="Items Manage"
             isActive={location.pathname === '/items'}
           />
           <NavItem
@@ -142,6 +175,15 @@ function Layout() {
             isActive={location.pathname === '/settings'}
           />
         </nav>
+         <div className="p-4 border-t">
+            <div className="px-4 py-2 text-sm text-gray-500 truncate mb-2">
+                 {user?.email}
+            </div>
+            <Button variant="ghost" className="w-full justify-start text-red-500 hover:text-red-600 hover:bg-red-50" onClick={logout}>
+                <LogOut className="mr-2 h-4 w-4" />
+                Log Out
+            </Button>
+        </div>
       </aside>
 
       {/* Main Content */}
@@ -158,20 +200,24 @@ function App() {
   return (
     <BrowserRouter>
       <ThemeProvider>
-        <Suspense fallback={<LoadingSpinner />}>
-          <Routes>
-            {/* Public / Standalone Routes */}
-            <Route path="/share/:id" element={<SharedInvoice />} />
+        <AuthProvider>
+          <Suspense fallback={<LoadingSpinner />}>
+            <Routes>
+              {/* Public / Standalone Routes */}
+              <Route path="/login" element={<Login />} />
+              <Route path="/share/:id" element={<SharedInvoice />} />
 
-            {/* App Routes with Sidebar */}
-            <Route element={<Layout />}>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/items" element={<Items />} />
-              <Route path="/history" element={<History />} />
-              <Route path="/settings" element={<Settings />} />
-            </Route>
-          </Routes>
-        </Suspense>
+              {/* App Routes with Sidebar */}
+              <Route element={<RequireAuth><Layout /></RequireAuth>}>
+                <Route path="/" element={<Dashboard />} />
+                <Route path="/edit/:id" element={<Dashboard />} />
+                <Route path="/items" element={<Items />} />
+                <Route path="/history" element={<History />} />
+                <Route path="/settings" element={<Settings />} />
+              </Route>
+            </Routes>
+          </Suspense>
+        </AuthProvider>
       </ThemeProvider>
     </BrowserRouter>
   );

@@ -6,6 +6,7 @@ const path = require('path');
 const morgan = require('morgan');
 
 // Import Routes
+const authRoutes = require('./routes/authRoutes');
 const businessRoutes = require('./routes/businessRoutes');
 const itemRoutes = require('./routes/itemRoutes');
 const invoiceRoutes = require('./routes/invoiceRoutes');
@@ -24,6 +25,7 @@ app.use(express.json()); // Parse JSON bodies
 app.use(morgan('dev')); // Logging
 
 // Routes
+app.use('/api/auth', authRoutes);
 app.use('/api/business', businessRoutes);
 app.use('/api/items', itemRoutes);
 app.use('/api/customers', customerRoutes);
@@ -35,6 +37,10 @@ app.use((err, req, res, next) => {
   res.status(500).json({
     message: err.message || 'Internal Server Error',
   });
+});
+
+app.get('/', (req, res) => {
+  res.send('Invoice Backend is running');
 });
 
 const PORT = process.env.PORT || 5000;

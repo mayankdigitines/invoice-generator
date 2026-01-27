@@ -10,4 +10,8 @@ const customerSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
+// Indexes for Search
+customerSchema.index({ name: 'text' });
+// phone is already indexed due to unique: true
+
 module.exports = mongoose.model('Customer', customerSchema);

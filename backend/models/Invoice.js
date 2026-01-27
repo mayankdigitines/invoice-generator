@@ -25,4 +25,9 @@ const invoiceSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
+// Indexes for Search & Sorting
+invoiceSchema.index({ createdAt: -1 });
+invoiceSchema.index({ invoiceNumber: 'text' });
+invoiceSchema.index({ customer: 1 });
+
 module.exports = mongoose.model('Invoice', invoiceSchema);

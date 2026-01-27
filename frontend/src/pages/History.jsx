@@ -239,19 +239,8 @@ export default function History() {
                   </th>
                 </tr>
               </thead>
-              <tbody className="[&_tr:last-child]:border-0">
-                {loading ? (
-                  <tr>
-                    <td colSpan={5} className="h-32 text-center">
-                      <div className="flex justify-center items-center h-full">
-                        <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                        <span className="ml-2 text-muted-foreground">
-                          Loading invoices...
-                        </span>
-                      </div>
-                    </td>
-                  </tr>
-                ) : invoices.length === 0 ? (
+              <tbody className={cn("[&_tr:last-child]:border-0 transition-opacity duration-200", loading && invoices.length > 0 ? "opacity-50 pointer-events-none" : "")}>
+                {invoices.length === 0 && !loading ? (
                   <tr>
                     <td
                       colSpan={5}
@@ -365,6 +354,18 @@ export default function History() {
                     </tr>
                   ))
                 )}
+                {/* Initial Loading Skeleton */}
+                 {loading && invoices.length === 0 && (
+                   Array.from({ length: 5 }).map((_, i) => (
+                    <tr key={i} className="border-b">
+                        <td className="p-4"><div className="h-4 bg-muted animate-pulse rounded w-20"></div></td>
+                        <td className="p-4"><div className="h-4 bg-muted animate-pulse rounded w-32"></div></td>
+                        <td className="p-4"><div className="h-4 bg-muted animate-pulse rounded w-24"></div></td>
+                        <td className="p-4"><div className="h-4 bg-muted animate-pulse rounded w-16 ml-auto"></div></td>
+                        <td className="p-4"><div className="h-8 bg-muted animate-pulse rounded w-24 ml-auto"></div></td>
+                    </tr>
+                   ))
+                 )}
               </tbody>
             </table>
           </div>

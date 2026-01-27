@@ -65,11 +65,11 @@ export default function Login() {
           </div>
           <div className="space-y-1">
             <CardTitle className="text-xl font-bold tracking-tight text-white">
-              {isRegistering ? 'Register Admin' : 'Admin Login'}
+              {isRegistering ? 'Register' : 'Login'}
             </CardTitle>
             <CardDescription className="text-slate-400 text-xs">
               {isRegistering
-                ? 'Create a new admin account'
+                ? 'Create a new account'
                 : 'Sign in to access dashboard'}
             </CardDescription>
           </div>

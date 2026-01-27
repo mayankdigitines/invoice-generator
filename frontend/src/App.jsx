@@ -17,10 +17,14 @@ import {
   Menu,
   X,
   LogOut,
+  ChevronLeft,
+  ChevronRight,
+  PanelLeft,
 } from 'lucide-react';
 import { ThemeProvider } from './context/ThemeContext.jsx';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { Button } from '@/components/ui/button';
+import { cn } from './lib/utils';
 
 // Lazy Load Pages
 const Dashboard = lazy(() => import('./pages/Dashboard'));
@@ -55,6 +59,7 @@ function RequireAuth({ children }) {
 
 function Layout() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const location = useLocation();
   const { logout, user } = useAuth();
 
@@ -130,59 +135,102 @@ function Layout() {
               isActive={location.pathname === '/settings'}
             />
             <div className="mt-auto border-t pt-4">
-                <div className="px-4 py-2 text-sm text-gray-500 truncate">
-                  {user?.email}
-                </div>
-                <Button variant="ghost" className="w-full justify-start text-red-500 hover:text-red-600 hover:bg-red-50" onClick={logout}>
-                   <LogOut className="mr-2 h-4 w-4" />
-                   Log Out
-                </Button>
+              <div className="px-4 py-2 text-sm text-gray-500 truncate">
+                {user?.email}
+              </div>
+              <Button
+                variant="ghost"
+                className="w-full justify-start text-red-500 hover:text-red-600 hover:bg-red-50"
+                onClick={logout}
+              >
+                <LogOut className="mr-2 h-4 w-4" />
+                Log Out
+              </Button>
             </div>
           </nav>
         </div>
       )}
 
       {/* Sidebar (Desktop) */}
-      <aside className="w-64 bg-background border-r hidden md:flex flex-col sticky top-0 h-screen">
-        <div className="h-16 flex items-center px-6 border-b font-bold text-xl tracking-tight">
-          <Link to="/" className="hover:text-primary transition-colors">
-            InvoiceApp
-          </Link>
+      <aside
+        className={cn(
+          'bg-background border-r hidden md:flex flex-col sticky top-0 h-screen transition-all duration-300 ease-in-out',
+          isSidebarCollapsed ? 'w-20' : 'w-64',
+        )}
+      >
+        <div className="h-16 flex items-center justify-between px-4 border-b">
+          {!isSidebarCollapsed && (
+            <Link
+              to="/"
+              className="font-bold text-xl tracking-tight hover:text-primary transition-colors truncate"
+            >
+              InvoiceApp
+            </Link>
+          )}
+          <Button
+            variant="ghost"
+            size="icon"
+            className={cn('ml-auto', isSidebarCollapsed && 'mx-auto')}
+            onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+            title={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            {isSidebarCollapsed ? (
+              <PanelLeft className="h-5 w-5" />
+            ) : (
+              <PanelLeft className="h-5 w-5 text-muted-foreground" />
+            )}
+          </Button>
         </div>
+
         <nav className="p-4 space-y-2 flex-1">
           <NavItem
             to="/"
             icon={<PlusCircle size={20} />}
             label="New Invoice"
             isActive={location.pathname === '/'}
+            isCollapsed={isSidebarCollapsed}
           />
           <NavItem
             to="/items"
             icon={<Package size={20} />}
             label="Items Manage"
             isActive={location.pathname === '/items'}
+            isCollapsed={isSidebarCollapsed}
           />
           <NavItem
             to="/history"
             icon={<FileClock size={20} />}
             label="History"
             isActive={location.pathname === '/history'}
+            isCollapsed={isSidebarCollapsed}
           />
           <NavItem
             to="/settings"
             icon={<SettingsIcon size={20} />}
             label="Settings"
             isActive={location.pathname === '/settings'}
+            isCollapsed={isSidebarCollapsed}
           />
         </nav>
-         <div className="p-4 border-t">
-            <div className="px-4 py-2 text-sm text-gray-500 truncate mb-2">
-                 {user?.email}
+
+        <div className="p-4 border-t space-y-2">
+          {!isSidebarCollapsed && (
+            <div className="px-4 py-2 text-sm text-gray-500 truncate animate-in fade-in">
+              {user?.email}
             </div>
-            <Button variant="ghost" className="w-full justify-start text-red-500 hover:text-red-600 hover:bg-red-50" onClick={logout}>
-                <LogOut className="mr-2 h-4 w-4" />
-                Log Out
-            </Button>
+          )}
+          <Button
+            variant="ghost"
+            className={cn(
+              'w-full text-red-500 hover:text-red-600 hover:bg-red-50',
+              isSidebarCollapsed ? 'justify-center px-2' : 'justify-start',
+            )}
+            onClick={logout}
+            title="Log Out"
+          >
+            <LogOut className={cn('h-5 w-5', !isSidebarCollapsed && 'mr-2 h-4 w-4')} />
+            {!isSidebarCollapsed && 'Log Out'}
+          </Button>
         </div>
       </aside>
 
@@ -223,19 +271,29 @@ function App() {
   );
 }
 
-function NavItem({ to, icon, label, isActive, onClick }) {
+function NavItem({ to, icon, label, isActive, onClick, isCollapsed }) {
   return (
     <Link
       to={to}
       onClick={onClick}
-      className={`flex items-center gap-3 px-4 py-3 rounded-md text-sm font-medium transition-colors ${
+      className={cn(
+        'flex items-center gap-3 px-4 py-3 rounded-md text-sm font-medium transition-all duration-200 group relative',
         isActive
           ? 'bg-primary/10 text-primary hover:bg-primary/15'
-          : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-      }`}
+          : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+        isCollapsed && 'justify-center px-2',
+      )}
+      title={isCollapsed ? label : undefined}
     >
-      {icon}
-      {label}
+      <span className={cn(isCollapsed ? 'mr-0' : '')}>{icon}</span>
+      {!isCollapsed && <span className="animate-in fade-in duration-200">{label}</span>}
+      
+      {/* Tooltip for collapsed state */}
+      {isCollapsed && (
+        <div className="absolute left-full ml-2 w-max rounded-md bg-popover px-2 py-1 text-xs text-popover-foreground shadow-md opacity-0 group-hover:opacity-100 transition-opacity z-50 pointer-events-none">
+          {label}
+        </div>
+      )}
     </Link>
   );
 }

@@ -212,7 +212,8 @@ exports.getAllInvoices = async (req, res, next) => {
       .populate('customer')
       .sort({ createdAt: -1 })
       .limit(limit * 1)
-      .skip((page - 1) * limit);
+      .skip((page - 1) * limit)
+      .lean();
 
     const count = await Invoice.countDocuments(query);
 

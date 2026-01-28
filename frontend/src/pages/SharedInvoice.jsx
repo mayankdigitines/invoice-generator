@@ -7,21 +7,21 @@ import { InvoicePDF } from '../components/InvoicePDF';
 import { Button } from '../components/ui/button';
 
 export default function SharedInvoice() {
-  const { id } = useParams();
+  const { id, businessId } = useParams();
   const [invoice, setInvoice] = useState(null);
   const [business, setBusiness] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  console.log('Fetching invoice with id:', id, 'and businessId:', businessId);
+
   useEffect(() => {
     const fetchInvoiceData = async () => {
       try {
-        const [invRes, busRes] = await Promise.all([
-          api.get(`/invoices/${id}`),
-          api.get('/business'),
-        ]);
-        setInvoice(invRes.data);
-        setBusiness(busRes.data);
+        // Only fetch invoice, business data is populated inside it now
+        const { data } = await api.get(`/invoices/${id}/${businessId}`);
+        setInvoice(data);
+        setBusiness(data.businessId); // businessId is now the populated object
       } catch (err) {
         console.error('Failed to load invoice', err);
         setError('Invoice not found or link expired.');
@@ -97,7 +97,7 @@ export default function SharedInvoice() {
         <div className="w-full max-w-sm bg-white p-6 rounded-lg shadow-sm border border-gray-200 space-y-6">
           <div className="text-center space-y-1">
             <h2 className="text-xl font-semibold text-gray-900">
-              {business?.businessName || 'Invoice'}
+              {business?.name || 'Invoice'}
             </h2>
             <p className="text-sm text-gray-500">Ready for download</p>
           </div>
@@ -105,7 +105,9 @@ export default function SharedInvoice() {
           <div className="space-y-3 text-sm">
             <div className="flex justify-between py-2 border-b border-gray-100">
               <span className="text-gray-500">Invoice No.</span>
-              <span className="font-medium text-gray-900">{invoice.invoiceNumber}</span>
+              <span className="font-medium text-gray-900">
+                {invoice.invoiceNumber}
+              </span>
             </div>
             <div className="flex justify-between py-2 border-b border-gray-100">
               <span className="text-gray-500">Date</span>

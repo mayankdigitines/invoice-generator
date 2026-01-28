@@ -2,10 +2,15 @@ const mongoose = require('mongoose');
 
 const invoiceSchema = new mongoose.Schema(
   {
-    invoiceNumber: { type: String, required: true, unique: true },
+    invoiceNumber: { type: String, required: true },
     customer: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Customer', // Link to Customer Model
+      required: true,
+    },
+    businessId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Business',
       required: true,
     },
     items: [
@@ -27,7 +32,8 @@ const invoiceSchema = new mongoose.Schema(
 
 // Indexes for Search & Sorting
 invoiceSchema.index({ createdAt: -1 });
-invoiceSchema.index({ invoiceNumber: 'text' });
+// Compound index for unique invoice number per business
+invoiceSchema.index({ invoiceNumber: 1, businessId: 1 }, { unique: true });
 invoiceSchema.index({ customer: 1 });
 
 module.exports = mongoose.model('Invoice', invoiceSchema);

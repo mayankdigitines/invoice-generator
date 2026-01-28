@@ -10,9 +10,11 @@ const generateToken = (id) => {
 const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
-    
+
     if (!email || !password) {
-      return res.status(400).json({ message: 'Please provide email and password' });
+      return res
+        .status(400)
+        .json({ message: 'Please provide email and password' });
     }
 
     const user = await User.findOne({ email });
@@ -21,7 +23,8 @@ const loginUser = async (req, res) => {
       res.json({
         _id: user._id,
         email: user.email,
-        isAdmin: user.isAdmin,
+        role: user.role,
+        businessId: user.businessId,
         token: generateToken(user._id),
       });
     } else {
@@ -32,12 +35,15 @@ const loginUser = async (req, res) => {
   }
 };
 
-const registerUser = async (req, res) => {
+// Only for Super Admin to create new businesses/users
+const createBusinessUser = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, businessId } = req.body;
 
-    if (!email || !password) {
-      return res.status(400).json({ message: 'Please provide email and password' });
+    if (!email || !password || !businessId) {
+      return res
+        .status(400)
+        .json({ message: 'Please provide email, password and businessId' });
     }
 
     const userExists = await User.findOne({ email });
@@ -46,14 +52,19 @@ const registerUser = async (req, res) => {
       return res.status(400).json({ message: 'User already exists' });
     }
 
-    const user = await User.create({ email, password });
+    const user = await User.create({
+      email,
+      password,
+      role: 'business_admin',
+      businessId,
+    });
 
     if (user) {
       res.status(201).json({
         _id: user._id,
         email: user.email,
-        isAdmin: user.isAdmin,
-        token: generateToken(user._id),
+        role: user.role,
+        businessId: user.businessId,
       });
     } else {
       res.status(400).json({ message: 'Invalid user data' });
@@ -63,4 +74,4 @@ const registerUser = async (req, res) => {
   }
 };
 
-module.exports = { loginUser, registerUser };
+module.exports = { loginUser, createBusinessUser };

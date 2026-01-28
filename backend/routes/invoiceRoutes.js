@@ -7,14 +7,18 @@ const {
   getCustomerInvoices,
   getAllInvoices,
   updateInvoice,
-  deleteInvoice
+  deleteInvoice,
+  getSingleInvoice,
 } = require('../controllers/invoiceController');
 
 // Save invoice data
 router.post('/create', protect, createInvoice);
 
 // Get single invoice by ID (Public for shared link)
-router.get('/:id', getInvoiceById);
+router.get('/:id/:businessId', getInvoiceById);
+
+// Get single invoice by ID (Protected for editing/viewing in dashboard)
+router.get('/:id', protect, getSingleInvoice);
 
 // Update/Delete Invoice
 router.put('/:id', protect, updateInvoice);

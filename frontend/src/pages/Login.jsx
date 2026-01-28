@@ -32,16 +32,12 @@ export default function Login() {
       setError('Please fill in all fields');
       return;
     }
-    
+
     setLoading(true);
     setError('');
 
     let result;
-    if (isRegistering) {
-      result = await register(email, password);
-    } else {
-      result = await login(email, password);
-    }
+    result = await login(email, password);
 
     if (result.success) {
       navigate(from, { replace: true });
@@ -54,7 +50,7 @@ export default function Login() {
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-muted/20 relative overflow-hidden text-foreground">
       {/* Grid Background */}
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]"></div>
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-size-[24px_24px]"></div>
       {/* Subtle Glow */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-96 bg-primary/10 blur-[100px] -z-10 rounded-full"></div>
 
@@ -65,12 +61,10 @@ export default function Login() {
           </div>
           <div className="space-y-1">
             <CardTitle className="text-xl font-bold tracking-tight">
-              {isRegistering ? 'Register' : 'Login'}
+              Login
             </CardTitle>
             <CardDescription className="text-muted-foreground text-xs">
-              {isRegistering
-                ? 'Create a new account'
-                : 'Sign in to access dashboard'}
+              Sign in to access dashboard
             </CardDescription>
           </div>
         </CardHeader>
@@ -123,39 +117,19 @@ export default function Login() {
               {loading ? (
                 <>
                   <Loader2 className="mr-2 h-3 w-3 animate-spin" />
-                  {isRegistering ? 'Creating...' : 'Signing In...'}
+                  Signing In...
                 </>
-              ) : isRegistering ? (
-                'Create Account'
               ) : (
                 'Login'
               )}
             </Button>
           </form>
         </CardContent>
-        <CardFooter className="flex flex-col gap-3 text-center pb-6 pt-0">
-          <div className="relative w-full">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t border-border" />
-            </div>
-          </div>
-          <Button
-            variant="ghost"
-            className="w-full h-8 text-xs text-muted-foreground hover:text-foreground"
-            onClick={() => {
-                setError('');
-                setIsRegistering(!isRegistering);
-            }}
-          >
-            {isRegistering
-              ? 'Back to Login'
-              : 'Create Account'}
-          </Button>
-        </CardFooter>
       </Card>
 
       <div className="absolute bottom-4 text-center text-[10px] text-muted-foreground/60">
-        &copy; {new Date().getFullYear()} Invoice Generator. All rights reserved.
+        &copy; {new Date().getFullYear()} Invoice Generator. All rights
+        reserved.
       </div>
     </div>
   );

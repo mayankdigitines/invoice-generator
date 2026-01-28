@@ -5,15 +5,22 @@ const Customer = require('../models/Customer');
 exports.createInvoice = async (req, res, next) => {
   try {
     const { customer, items } = req.body;
+    const businessId = req.user.businessId;
 
-    // A. Handle Customer (Find or Create)
-    let customerDoc = await Customer.findOne({ phone: customer.phone });
+    if (!businessId)
+      return res.status(400).json({ message: 'Business context missing' });
+
+    // A. Handle Customer (Find or Create) -> SCoped by Business
+    let customerDoc = await Customer.findOne({
+      phone: customer.phone,
+      businessId,
+    });
     if (customerDoc) {
       customerDoc.name = customer.name;
       customerDoc.address = customer.address;
       await customerDoc.save();
     } else {
-      customerDoc = new Customer(customer);
+      customerDoc = new Customer({ ...customer, businessId });
       await customerDoc.save();
     }
 
@@ -23,11 +30,14 @@ exports.createInvoice = async (req, res, next) => {
 
     const processedItems = await Promise.all(
       items.map(async (item) => {
-        // Auto-save new inventory
+        // Auto-save new inventory -> Scoped by Business
         if (!item._id && item.name) {
-          let existingItem = await Item.findOne({ name: item.name });
+          let existingItem = await Item.findOne({
+            name: item.name,
+            businessId,
+          });
           if (!existingItem) {
-            await new Item({ ...item }).save();
+            await new Item({ ...item, businessId }).save();
           }
         }
 
@@ -55,6 +65,7 @@ exports.createInvoice = async (req, res, next) => {
     const newInvoice = new Invoice({
       invoiceNumber: `INV-${Date.now()}`,
       customer: customerDoc._id,
+      businessId,
       items: processedItems,
       totalAmount,
       taxAmount: totalTax,
@@ -77,7 +88,16 @@ exports.createInvoice = async (req, res, next) => {
 // 2. Get Single Invoice (For re-printing later)
 exports.getInvoiceById = async (req, res, next) => {
   try {
-    const invoice = await Invoice.findById(req.params.id).populate('customer');
+    const query = {
+      _id: req.params.id,
+      businessId: req.params.businessId,
+    };
+
+    console.log('Querying Invoice with:', query);
+
+    const invoice = await Invoice.findOne(query)
+      .populate('customer')
+      .populate('businessId');
     if (!invoice) return res.status(404).json({ message: 'Invoice not found' });
     res.json(invoice);
   } catch (error) {
@@ -89,7 +109,14 @@ exports.getInvoiceById = async (req, res, next) => {
 exports.getCustomerInvoices = async (req, res, next) => {
   try {
     const { customerId } = req.params;
-    const invoices = await Invoice.find({ customer: customerId }).sort({
+
+    // Verify customer belongs to business (implied by invoice query later, but good to check context)
+    const query = { customer: customerId };
+    if (req.user.businessId) {
+      query.businessId = req.user.businessId;
+    }
+
+    const invoices = await Invoice.find(query).sort({
       createdAt: -1,
     });
     res.json(invoices);
@@ -98,7 +125,7 @@ exports.getCustomerInvoices = async (req, res, next) => {
   }
 };
 
-// 4. Update Invoice
+// 4. Update Invoice (With Items & Customer Handling)
 exports.updateInvoice = async (req, res, next) => {
   try {
     const { items, customer } = req.body;
@@ -106,19 +133,19 @@ exports.updateInvoice = async (req, res, next) => {
 
     // A. Update Customer Info if provided
     if (customer && customer.phone) {
-        let customerDoc = await Customer.findOne({ phone: customer.phone });
-        if (customerDoc) {
-             // Update existing customer details
-             customerDoc.name = customer.name;
-             customerDoc.address = customer.address;
-             await customerDoc.save();
-             updateData.customer = customerDoc._id;
-        } else {
-             // Create new if somehow not found (or changed phone entirely)
-             customerDoc = new Customer(customer);
-             await customerDoc.save();
-             updateData.customer = customerDoc._id;
-        }
+      let customerDoc = await Customer.findOne({ phone: customer.phone });
+      if (customerDoc) {
+        // Update existing customer details
+        customerDoc.name = customer.name;
+        customerDoc.address = customer.address;
+        await customerDoc.save();
+        updateData.customer = customerDoc._id;
+      } else {
+        // Create new if somehow not found (or changed phone entirely)
+        customerDoc = new Customer(customer);
+        await customerDoc.save();
+        updateData.customer = customerDoc._id;
+      }
     }
 
     // B. Recalculate totals if items change
@@ -151,11 +178,14 @@ exports.updateInvoice = async (req, res, next) => {
       updateData.grandTotal = totalAmount + totalTax;
     }
 
-    const invoice = await Invoice.findByIdAndUpdate(
-      req.params.id,
-      updateData,
-      { new: true }
-    ).populate('customer');
+    const filter = { _id: req.params.id };
+    if (req.user.businessId) {
+      filter.businessId = req.user.businessId;
+    }
+
+    const invoice = await Invoice.findOneAndUpdate(filter, updateData, {
+      new: true,
+    }).populate('customer');
 
     if (!invoice) return res.status(404).json({ message: 'Invoice not found' });
     res.json(invoice);
@@ -167,7 +197,12 @@ exports.updateInvoice = async (req, res, next) => {
 // 5. Delete Invoice
 exports.deleteInvoice = async (req, res, next) => {
   try {
-    const invoice = await Invoice.findByIdAndDelete(req.params.id);
+    const filter = { _id: req.params.id };
+    if (req.user.businessId) {
+      filter.businessId = req.user.businessId;
+    }
+
+    const invoice = await Invoice.findOneAndDelete(filter);
     if (!invoice) return res.status(404).json({ message: 'Invoice not found' });
     res.json({ message: 'Invoice deleted successfully' });
   } catch (error) {
@@ -178,9 +213,25 @@ exports.deleteInvoice = async (req, res, next) => {
 // 6. Get All Invoices (With Pagination, Filtering & Search)
 exports.getAllInvoices = async (req, res, next) => {
   try {
-    const { page = 1, limit = 10, search = '', startDate, endDate } = req.query;
+    const {
+      page = 1,
+      limit = 10,
+      search = '',
+      startDate,
+      endDate,
+      businessId, // Allow businessId override for Super Admin
+    } = req.query;
 
-    const query = {};
+    let targetBusinessId = req.user.businessId;
+
+    // Super Admin Override
+    if (req.user.role === 'super_admin' && businessId) {
+      targetBusinessId = businessId;
+    }
+
+    const query = {
+      businessId: targetBusinessId,
+    };
 
     // Date Filter
     if (startDate || endDate) {
@@ -223,6 +274,22 @@ exports.getAllInvoices = async (req, res, next) => {
       currentPage: Number(page),
       totalInvoices: count,
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// 7. Get Single Invoice for Logged-In User
+exports.getSingleInvoice = async (req, res, next) => {
+  try {
+    const query = {
+      _id: req.params.id,
+      businessId: req.user.businessId,
+    };
+
+    const invoice = await Invoice.findOne(query).populate('customer');
+    if (!invoice) return res.status(404).json({ message: 'Invoice not found' });
+    res.json(invoice);
   } catch (error) {
     next(error);
   }

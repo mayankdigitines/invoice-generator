@@ -104,17 +104,17 @@ export default function History() {
   };
 
   const handleDelete = async (id) => {
-      try {
-        setDeletingId(id);
-        await api.delete(`/invoices/${id}`);
-        setInvoices((prev) => prev.filter((inv) => inv._id !== id));
-        setTotalInvoices((prev) => prev - 1);
-      } catch (error) {
-        console.error('Failed to delete invoice:', error);
-        alert('Failed to delete invoice');
-      } finally {
-        setDeletingId(null);
-      }
+    try {
+      setDeletingId(id);
+      await api.delete(`/invoices/${id}`);
+      setInvoices((prev) => prev.filter((inv) => inv._id !== id));
+      setTotalInvoices((prev) => prev - 1);
+    } catch (error) {
+      console.error('Failed to delete invoice:', error);
+      alert('Failed to delete invoice');
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   return (
@@ -239,7 +239,14 @@ export default function History() {
                   </th>
                 </tr>
               </thead>
-              <tbody className={cn("[&_tr:last-child]:border-0 transition-opacity duration-200", loading && invoices.length > 0 ? "opacity-50 pointer-events-none" : "")}>
+              <tbody
+                className={cn(
+                  '[&_tr:last-child]:border-0 transition-opacity duration-200',
+                  loading && invoices.length > 0
+                    ? 'opacity-50 pointer-events-none'
+                    : '',
+                )}
+              >
                 {invoices.length === 0 && !loading ? (
                   <tr>
                     <td
@@ -303,7 +310,7 @@ export default function History() {
                           title="Download"
                           onClick={() =>
                             window.open(
-                              `${window.location.origin}/share/${inv._id}`,
+                              `${window.location.origin}/share/${inv._id}/${inv.businessId}`,
                               '_blank',
                             )
                           }
@@ -329,19 +336,27 @@ export default function History() {
                               className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50"
                               title="Delete"
                             >
-                              {deletingId === inv._id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                              {deletingId === inv._id ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <Trash2 className="w-4 h-4" />
+                              )}
                             </Button>
                           </AlertDialogTrigger>
                           <AlertDialogContent>
                             <AlertDialogHeader>
-                              <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                              <AlertDialogTitle>
+                                Are you absolutely sure?
+                              </AlertDialogTitle>
                               <AlertDialogDescription>
-                                This action cannot be undone. This will permanently delete invoice #{inv.invoiceNumber} from your database.
+                                This action cannot be undone. This will
+                                permanently delete invoice #{inv.invoiceNumber}{' '}
+                                from your database.
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
                               <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction 
+                              <AlertDialogAction
                                 onClick={() => handleDelete(inv._id)}
                                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                               >
@@ -355,17 +370,27 @@ export default function History() {
                   ))
                 )}
                 {/* Initial Loading Skeleton */}
-                 {loading && invoices.length === 0 && (
-                   Array.from({ length: 5 }).map((_, i) => (
+                {loading &&
+                  invoices.length === 0 &&
+                  Array.from({ length: 5 }).map((_, i) => (
                     <tr key={i} className="border-b">
-                        <td className="p-4"><div className="h-4 bg-muted animate-pulse rounded w-20"></div></td>
-                        <td className="p-4"><div className="h-4 bg-muted animate-pulse rounded w-32"></div></td>
-                        <td className="p-4"><div className="h-4 bg-muted animate-pulse rounded w-24"></div></td>
-                        <td className="p-4"><div className="h-4 bg-muted animate-pulse rounded w-16 ml-auto"></div></td>
-                        <td className="p-4"><div className="h-8 bg-muted animate-pulse rounded w-24 ml-auto"></div></td>
+                      <td className="p-4">
+                        <div className="h-4 bg-muted animate-pulse rounded w-20"></div>
+                      </td>
+                      <td className="p-4">
+                        <div className="h-4 bg-muted animate-pulse rounded w-32"></div>
+                      </td>
+                      <td className="p-4">
+                        <div className="h-4 bg-muted animate-pulse rounded w-24"></div>
+                      </td>
+                      <td className="p-4">
+                        <div className="h-4 bg-muted animate-pulse rounded w-16 ml-auto"></div>
+                      </td>
+                      <td className="p-4">
+                        <div className="h-8 bg-muted animate-pulse rounded w-24 ml-auto"></div>
+                      </td>
                     </tr>
-                   ))
-                 )}
+                  ))}
               </tbody>
             </table>
           </div>

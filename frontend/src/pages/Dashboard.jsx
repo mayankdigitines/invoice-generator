@@ -68,11 +68,11 @@ export default function Dashboard() {
       try {
         const promises = [
           api.get('/items?all=true'), // Fetch all for dropdown
-          api.get('/business'), // Business Profile
+          api.get('/business/profile'), // Business Profile
         ];
-        
+
         if (isEditing) {
-            promises.push(api.get(`/invoices/${id}`));
+          promises.push(api.get(`/invoices/${id}`));
         }
 
         const [itemsRes, busRes, invoiceRes] = await Promise.all(promises);
@@ -88,27 +88,28 @@ export default function Dashboard() {
 
         // Populate Invoice if Editing
         if (invoiceRes && invoiceRes.data) {
-            const inv = invoiceRes.data;
-            setCustomer({
-                name: inv.customer?.name || '',
-                phone: inv.customer?.phone || '',
-                address: inv.customer?.address || '',
-            });
-            // Ensure items have all fields for editing
-            setItems(inv.items.map(i => ({
-                name: i.itemName || i.name,
-                quantity: i.quantity,
-                price: i.price,
-                gstRate: i.gstRate || 0,
-                discount: i.discount || 0
-            })));
+          const inv = invoiceRes.data;
+          setCustomer({
+            name: inv.customer?.name || '',
+            phone: inv.customer?.phone || '',
+            address: inv.customer?.address || '',
+          });
+          // Ensure items have all fields for editing
+          setItems(
+            inv.items.map((i) => ({
+              name: i.itemName || i.name,
+              quantity: i.quantity,
+              price: i.price,
+              gstRate: i.gstRate || 0,
+              discount: i.discount || 0,
+            })),
+          );
         }
-
       } catch (err) {
         console.error('Failed to load dashboard data', err);
         if (isEditing) {
-             alert("Failed to load invoice details");
-             navigate('/history');
+          alert('Failed to load invoice details');
+          navigate('/history');
         }
       } finally {
         setLoading(false);
@@ -213,7 +214,10 @@ export default function Dashboard() {
 
   const handleSubmit = async () => {
     // Run Validation
-    const { isValid, errors: validationErrors } = validateInvoiceForm(customer, items);
+    const { isValid, errors: validationErrors } = validateInvoiceForm(
+      customer,
+      items,
+    );
     setErrors(validationErrors);
 
     if (!isValid) {
@@ -243,8 +247,8 @@ export default function Dashboard() {
 
   const resetForm = () => {
     if (isEditing) {
-        navigate('/'); // Go back to create mode
-        return;
+      navigate('/'); // Go back to create mode
+      return;
     }
     setCustomer({ name: '', phone: '', address: '' });
     setItems([{ name: '', quantity: 1, price: 0, gstRate: 18, discount: 0 }]);
@@ -255,7 +259,9 @@ export default function Dashboard() {
 
   // --- Success View ---
   if (isSuccess && generatedInvoice) {
-    const shareUrl = `${window.location.origin}/share/${generatedInvoice._id}`;
+    const businessId =
+      generatedInvoice.businessId?._id || generatedInvoice.businessId;
+    const shareUrl = `${window.location.origin}/share/${generatedInvoice._id}/${businessId}`;
 
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] py-12 animate-in fade-in zoom-in-95 duration-200">
@@ -265,7 +271,9 @@ export default function Dashboard() {
               <CheckCircle className="h-6 w-6" />
             </div>
             <div className="space-y-1">
-              <h2 className="text-xl font-semibold ">Invoice {isEditing ? 'Updated' : 'Created'}</h2>
+              <h2 className="text-xl font-semibold ">
+                Invoice {isEditing ? 'Updated' : 'Created'}
+              </h2>
               <p className="text-sm ">
                 Invoice{' '}
                 <span className="font-mono ">
@@ -297,7 +305,8 @@ export default function Dashboard() {
                 <DialogHeader>
                   <DialogTitle>Share Invoice</DialogTitle>
                   <DialogDescription>
-                    Copy the unique link below to share this invoice with your customer.
+                    Copy the unique link below to share this invoice with your
+                    customer.
                   </DialogDescription>
                 </DialogHeader>
                 <div className="flex items-center space-x-2 mt-2">
@@ -309,9 +318,7 @@ export default function Dashboard() {
                   <Button
                     size="icon"
                     className={`shrink-0 transition-all duration-200 h-10 w-10 ${
-                      copied
-                        ? 'bg-green-600 hover:bg-green-700 text-white'
-                        : ''
+                      copied ? 'bg-green-600 hover:bg-green-700 text-white' : ''
                     }`}
                     onClick={() => {
                       navigator.clipboard.writeText(shareUrl);
@@ -357,7 +364,9 @@ export default function Dashboard() {
               {isEditing ? 'Edit Invoice' : 'Create Invoice'}
             </h2>
             <p className="text-muted-foreground">
-              {isEditing ? 'Modify invoice details below.' : 'Enter customer and item details to generate a PDF.'}
+              {isEditing
+                ? 'Modify invoice details below.'
+                : 'Enter customer and item details to generate a PDF.'}
             </p>
           </div>
           <Button
@@ -368,11 +377,13 @@ export default function Dashboard() {
           >
             {isGenerating ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> {isEditing ? 'Updating...' : 'Generating...'}
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />{' '}
+                {isEditing ? 'Updating...' : 'Generating...'}
               </>
             ) : (
               <>
-                <FileText className="mr-2 h-4 w-4" /> {isEditing ? 'Update Invoice' : 'Generate Invoice'}
+                <FileText className="mr-2 h-4 w-4" />{' '}
+                {isEditing ? 'Update Invoice' : 'Generate Invoice'}
               </>
             )}
           </Button>
@@ -391,7 +402,11 @@ export default function Dashboard() {
                 <div className="space-y-2 relative">
                   <label className="text-xs font-semibold uppercase text-muted-foreground flex justify-between">
                     Phone Number
-                    {errors.customerPhone && <span className="text-red-500 font-normal normal-case">{errors.customerPhone}</span>}
+                    {errors.customerPhone && (
+                      <span className="text-red-500 font-normal normal-case">
+                        {errors.customerPhone}
+                      </span>
+                    )}
                   </label>
                   <div className="relative">
                     <Input
@@ -401,8 +416,9 @@ export default function Dashboard() {
                       onChange={(e) => {
                         const val = e.target.value.replace(/\D/g, ''); // Only allow numbers
                         if (val.length <= 10) {
-                             handleSearchChange(val);
-                             if(errors.customerPhone) setErrors({...errors, customerPhone: null});
+                          handleSearchChange(val);
+                          if (errors.customerPhone)
+                            setErrors({ ...errors, customerPhone: null });
                         }
                       }}
                       className={`pr-8 font-mono ${errors.customerPhone ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
@@ -430,22 +446,35 @@ export default function Dashboard() {
                 <div className="space-y-2">
                   <label className="text-xs font-semibold uppercase text-muted-foreground flex justify-between">
                     Full Name
-                    {errors.customerName && <span className="text-red-500 font-normal normal-case">{errors.customerName}</span>}
+                    {errors.customerName && (
+                      <span className="text-red-500 font-normal normal-case">
+                        {errors.customerName}
+                      </span>
+                    )}
                   </label>
                   <Input
                     value={customer.name}
                     onChange={(e) => {
                       setCustomer({ ...customer, name: e.target.value });
-                      if(errors.customerName) setErrors({...errors, customerName: null});
+                      if (errors.customerName)
+                        setErrors({ ...errors, customerName: null });
                     }}
                     placeholder="Customer Name"
-                    className={errors.customerName ? 'border-red-500 focus-visible:ring-red-500' : ''}
+                    className={
+                      errors.customerName
+                        ? 'border-red-500 focus-visible:ring-red-500'
+                        : ''
+                    }
                   />
                 </div>
                 <div className="space-y-2">
                   <label className="text-xs font-semibold uppercase text-muted-foreground flex justify-between">
-                     Address
-                     {errors.customerAddress && <span className="text-red-500 font-normal normal-case">{errors.customerAddress}</span>}
+                    Address
+                    {errors.customerAddress && (
+                      <span className="text-red-500 font-normal normal-case">
+                        {errors.customerAddress}
+                      </span>
+                    )}
                   </label>
                   <Input
                     value={customer.address}
@@ -453,7 +482,11 @@ export default function Dashboard() {
                       setCustomer({ ...customer, address: e.target.value })
                     }
                     placeholder="Billing Address"
-                    className={errors.customerAddress ? 'border-red-500 focus-visible:ring-red-500' : ''}
+                    className={
+                      errors.customerAddress
+                        ? 'border-red-500 focus-visible:ring-red-500'
+                        : ''
+                    }
                   />
                 </div>
               </CardContent>
@@ -529,9 +562,12 @@ export default function Dashboard() {
                           />
                           {/* Inline Error Icon for Desktop */}
                           {errors[`item_${index}_name`] && (
-                              <div className="absolute right-2 top-2 text-red-500 pointer-events-none hidden md:block" title={errors[`item_${index}_name`]}>
-                                  <AlertCircle className="h-4 w-4" />
-                              </div>
+                            <div
+                              className="absolute right-2 top-2 text-red-500 pointer-events-none hidden md:block"
+                              title={errors[`item_${index}_name`]}
+                            >
+                              <AlertCircle className="h-4 w-4" />
+                            </div>
                           )}
                           <datalist id={`items-list-${index}`}>
                             {inventory.map((inv) => (
@@ -558,8 +594,11 @@ export default function Dashboard() {
                                 )
                               }
                               onBlur={(e) => {
-                                if(!e.target.value || Number(e.target.value) < 1) {
-                                    updateItem(index, 'quantity', 1);
+                                if (
+                                  !e.target.value ||
+                                  Number(e.target.value) < 1
+                                ) {
+                                  updateItem(index, 'quantity', 1);
                                 }
                               }}
                             />

@@ -5,6 +5,9 @@ const cors = require('cors');
 const path = require('path');
 const morgan = require('morgan');
 
+const dns = require('dns');
+dns.setServers(['8.8.8.8', '8.8.4.4']);
+
 // Import Routes
 const authRoutes = require('./routes/authRoutes');
 const businessRoutes = require('./routes/businessRoutes');
@@ -18,9 +21,11 @@ const app = express();
 connectDB();
 
 // Middleware
-app.use(cors({
-  origin: '*' // Allow all URLs
-}));
+app.use(
+  cors({
+    origin: '*', // Allow all URLs
+  }),
+);
 app.use(express.json()); // Parse JSON bodies
 app.use(morgan('dev')); // Logging
 

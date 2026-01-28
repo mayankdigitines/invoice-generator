@@ -26,7 +26,7 @@ export default function Settings() {
   const { theme, toggleTheme } = useTheme();
 
   useEffect(() => {
-    api.get('/business').then((res) => {
+    api.get('/business/profile').then((res) => {
       if (res.data) setForm(res.data);
     });
   }, []);
@@ -39,7 +39,7 @@ export default function Settings() {
     setLoading(true);
     setSuccess(false);
     try {
-      await api.post('/business', form);
+      await api.post('/business/profile', form);
       setSuccess(true);
       setTimeout(() => setSuccess(false), 2000);
     } catch (e) {

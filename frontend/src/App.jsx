@@ -1,12 +1,12 @@
-import { Suspense, lazy, useState } from 'react';
+import { Suspense, lazy, useState, useMemo } from 'react';
 import {
   BrowserRouter,
   Routes,
   Route,
   Link,
-  Outlet,
   useLocation,
   Navigate,
+  Outlet,
 } from 'react-router-dom';
 import {
   Settings as SettingsIcon,
@@ -15,24 +15,21 @@ import {
   FileClock,
   Loader2,
   Menu,
-  X,
-  LogOut,
-  ChevronLeft,
-  ChevronRight,
-  PanelLeft,
 } from 'lucide-react';
 import { ThemeProvider } from './context/ThemeContext.jsx';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { Button } from '@/components/ui/button';
-import { cn } from './lib/utils';
+import { Sidebar, MobileSidebar } from '@/components/Layout/Sidebar';
 
 // Lazy Load Pages
 const Dashboard = lazy(() => import('./pages/Dashboard'));
+const SuperAdminDashboard = lazy(() => import('./pages/SuperAdminDashboard'));
 const History = lazy(() => import('./pages/History'));
 const Settings = lazy(() => import('./pages/Settings'));
 const Items = lazy(() => import('./pages/Items'));
 const SharedInvoice = lazy(() => import('./pages/SharedInvoice'));
 const Login = lazy(() => import('./pages/Login'));
+const BusinessDetails = lazy(() => import('./pages/BusinessDetails'));
 
 function LoadingSpinner() {
   return (
@@ -57,16 +54,58 @@ function RequireAuth({ children }) {
   return children;
 }
 
+function RequireBusiness() {
+  const { user } = useAuth();
+  if (user?.role === 'super_admin') {
+    return <Navigate to="/" replace />;
+  }
+  return <Outlet />;
+}
+
 function Layout() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const location = useLocation();
-  const { logout, user } = useAuth();
+  const { user } = useAuth();
 
-  // Close mobile menu when route changes
-  const handleNavClick = () => {
-    setIsMobileMenuOpen(false);
-  };
+  const navItems = useMemo(() => {
+    if (user?.role === 'super_admin') {
+      return [
+        {
+          to: '/',
+          icon: <SettingsIcon size={20} />,
+          label: 'Overview',
+          isActive: location.pathname === '/',
+        },
+      ];
+    }
+    return [
+      {
+        to: '/',
+        icon: <PlusCircle size={20} />,
+        label: 'New Invoice',
+        isActive: location.pathname === '/',
+      },
+      {
+        to: '/items',
+        icon: <Package size={20} />,
+        label: 'Items Manage',
+        isActive: location.pathname === '/items',
+      },
+      {
+        to: '/history',
+        icon: <FileClock size={20} />,
+        label: 'History',
+        isActive: location.pathname === '/history',
+      },
+      {
+        to: '/settings',
+        icon: <SettingsIcon size={20} />,
+        label: 'Settings',
+        isActive: location.pathname === '/settings',
+      },
+    ];
+  }, [user, location.pathname]);
 
   return (
     <div className="min-h-screen bg-muted/20 flex flex-col md:flex-row">
@@ -84,155 +123,19 @@ function Layout() {
         </Button>
       </header>
 
-      {/* Mobile Sidebar / Drawer */}
-      {isMobileMenuOpen && (
-        <div className="fixed inset-0 z-50 md:hidden flex">
-          {/* Backdrop */}
-          <div
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm animate-in fade-in"
-            onClick={() => setIsMobileMenuOpen(false)}
-          />
+      {/* Mobile Sidebar */}
+      <MobileSidebar
+        isOpen={isMobileMenuOpen}
+        setIsOpen={setIsMobileMenuOpen}
+        navItems={navItems}
+      />
 
-          {/* Drawer Content */}
-          <nav className="relative w-64 bg-background h-full shadow-xl p-4 flex flex-col gap-2 animate-in slide-in-from-left duration-200">
-            <div className="flex items-center justify-between mb-6 px-2">
-              <span className="font-bold text-xl tracking-tight">Menu</span>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                <X className="h-5 w-5" />
-              </Button>
-            </div>
-
-            <NavItem
-              onClick={handleNavClick}
-              to="/"
-              icon={<PlusCircle size={20} />}
-              label="New Invoice"
-              isActive={location.pathname === '/'}
-            />
-            <NavItem
-              onClick={handleNavClick}
-              to="/items"
-              icon={<Package size={20} />}
-              label="Items Manage"
-              isActive={location.pathname === '/items'}
-            />
-            <NavItem
-              onClick={handleNavClick}
-              to="/history"
-              icon={<FileClock size={20} />}
-              label="History"
-              isActive={location.pathname === '/history'}
-            />
-            <NavItem
-              onClick={handleNavClick}
-              to="/settings"
-              icon={<SettingsIcon size={20} />}
-              label="Settings"
-              isActive={location.pathname === '/settings'}
-            />
-            <div className="mt-auto border-t pt-4">
-              <div className="px-4 py-2 text-sm text-gray-500 truncate">
-                {user?.email}
-              </div>
-              <Button
-                variant="ghost"
-                className="w-full justify-start text-red-500 hover:text-red-600 hover:bg-red-50"
-                onClick={logout}
-              >
-                <LogOut className="mr-2 h-4 w-4" />
-                Log Out
-              </Button>
-            </div>
-          </nav>
-        </div>
-      )}
-
-      {/* Sidebar (Desktop) */}
-      <aside
-        className={cn(
-          'bg-background border-r hidden md:flex flex-col sticky top-0 h-screen transition-all duration-300 ease-in-out',
-          isSidebarCollapsed ? 'w-20' : 'w-64',
-        )}
-      >
-        <div className="h-16 flex items-center justify-between px-4 border-b">
-          {!isSidebarCollapsed && (
-            <Link
-              to="/"
-              className="font-bold text-xl tracking-tight hover:text-primary transition-colors truncate"
-            >
-              InvoiceApp
-            </Link>
-          )}
-          <Button
-            variant="ghost"
-            size="icon"
-            className={cn('ml-auto', isSidebarCollapsed && 'mx-auto')}
-            onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-            title={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          >
-            {isSidebarCollapsed ? (
-              <PanelLeft className="h-5 w-5" />
-            ) : (
-              <PanelLeft className="h-5 w-5 text-muted-foreground" />
-            )}
-          </Button>
-        </div>
-
-        <nav className="p-4 space-y-2 flex-1">
-          <NavItem
-            to="/"
-            icon={<PlusCircle size={20} />}
-            label="New Invoice"
-            isActive={location.pathname === '/'}
-            isCollapsed={isSidebarCollapsed}
-          />
-          <NavItem
-            to="/items"
-            icon={<Package size={20} />}
-            label="Items Manage"
-            isActive={location.pathname === '/items'}
-            isCollapsed={isSidebarCollapsed}
-          />
-          <NavItem
-            to="/history"
-            icon={<FileClock size={20} />}
-            label="History"
-            isActive={location.pathname === '/history'}
-            isCollapsed={isSidebarCollapsed}
-          />
-          <NavItem
-            to="/settings"
-            icon={<SettingsIcon size={20} />}
-            label="Settings"
-            isActive={location.pathname === '/settings'}
-            isCollapsed={isSidebarCollapsed}
-          />
-        </nav>
-
-        <div className="p-4 border-t space-y-2">
-          {!isSidebarCollapsed && (
-            <div className="px-4 py-2 text-sm text-gray-500 truncate animate-in fade-in">
-              {user?.email}
-            </div>
-          )}
-          <Button
-            variant="ghost"
-            className={cn(
-              'w-full text-red-500 hover:text-red-600 hover:bg-red-50',
-              isSidebarCollapsed ? 'justify-center px-2' : 'justify-start',
-            )}
-            onClick={logout}
-            title="Log Out"
-          >
-            <LogOut className={cn('h-5 w-5', !isSidebarCollapsed && 'mr-2 h-4 w-4')} />
-            {!isSidebarCollapsed && 'Log Out'}
-          </Button>
-        </div>
-      </aside>
+      {/* Desktop Sidebar */}
+      <Sidebar
+        isCollapsed={isSidebarCollapsed}
+        toggleSidebar={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+        navItems={navItems}
+      />
 
       {/* Main Content */}
       <main className="flex-1 p-4 md:p-8 overflow-y-auto w-full">
@@ -244,6 +147,14 @@ function Layout() {
   );
 }
 
+function DashboardRouter() {
+  const { user } = useAuth();
+  if (user?.role === 'super_admin') {
+    return <SuperAdminDashboard />;
+  }
+  return <Dashboard />;
+}
+
 function App() {
   return (
     <BrowserRouter>
@@ -253,48 +164,42 @@ function App() {
             <Routes>
               {/* Public / Standalone Routes */}
               <Route path="/login" element={<Login />} />
-              <Route path="/share/:id" element={<SharedInvoice />} />
+              <Route
+                path="/share/:id/:businessId"
+                element={<SharedInvoice />}
+              />
 
               {/* App Routes with Sidebar */}
-              <Route element={<RequireAuth><Layout /></RequireAuth>}>
-                <Route path="/" element={<Dashboard />} />
-                <Route path="/edit/:id" element={<Dashboard />} />
-                <Route path="/items" element={<Items />} />
-                <Route path="/history" element={<History />} />
-                <Route path="/settings" element={<Settings />} />
+              <Route
+                element={
+                  <RequireAuth>
+                    <Layout />
+                  </RequireAuth>
+                }
+              >
+                <Route path="/" element={<DashboardRouter />} />
+
+                {/* Business User Routes Only */}
+                <Route element={<RequireBusiness />}>
+                  <Route path="/edit/:id" element={<Dashboard />} />
+                  <Route path="/items" element={<Items />} />
+                  <Route path="/history" element={<History />} />
+                  <Route path="/settings" element={<Settings />} />
+                </Route>
+
+                <Route
+                  path="/business/:businessId"
+                  element={<BusinessDetails />}
+                />
               </Route>
+
+              {/* Catch all - Redirect to Home/Dashboard */}
+              <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </Suspense>
         </AuthProvider>
       </ThemeProvider>
     </BrowserRouter>
-  );
-}
-
-function NavItem({ to, icon, label, isActive, onClick, isCollapsed }) {
-  return (
-    <Link
-      to={to}
-      onClick={onClick}
-      className={cn(
-        'flex items-center gap-3 px-4 py-3 rounded-md text-sm font-medium transition-all duration-200 group relative',
-        isActive
-          ? 'bg-primary/10 text-primary hover:bg-primary/15'
-          : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-        isCollapsed && 'justify-center px-2',
-      )}
-      title={isCollapsed ? label : undefined}
-    >
-      <span className={cn(isCollapsed ? 'mr-0' : '')}>{icon}</span>
-      {!isCollapsed && <span className="animate-in fade-in duration-200">{label}</span>}
-      
-      {/* Tooltip for collapsed state */}
-      {isCollapsed && (
-        <div className="absolute left-full ml-2 w-max rounded-md bg-popover px-2 py-1 text-xs text-popover-foreground shadow-md opacity-0 group-hover:opacity-100 transition-opacity z-50 pointer-events-none">
-          {label}
-        </div>
-      )}
-    </Link>
   );
 }
 

@@ -42,12 +42,15 @@ export const AuthProvider = ({ children }) => {
         throw new Error('Email and password are required');
       }
       const { data } = await api.post('/auth/register', { email, password });
-      
+
       localStorage.setItem('userInfo', JSON.stringify(data));
       setUser(data);
       return { success: true };
     } catch (error) {
-      console.error('Registration Error:', error.response?.data || error.message);
+      console.error(
+        'Registration Error:',
+        error.response?.data || error.message,
+      );
       return {
         success: false,
         message:

@@ -21,4 +21,23 @@ const protect = async (req, res, next) => {
   }
 };
 
-module.exports = { protect };
+const admin = (req, res, next) => {
+  if (req.user && req.user.role === 'super_admin') {
+    next();
+  } else {
+    res.status(401).json({ message: 'Not authorized as an admin' });
+  }
+};
+
+const businessOwner = (req, res, next) => {
+  if (
+    req.user &&
+    (req.user.role === 'business_admin' || req.user.role === 'super_admin')
+  ) {
+    next();
+  } else {
+    res.status(401).json({ message: 'Not authorized as a business admin' });
+  }
+};
+
+module.exports = { protect, admin, businessOwner };

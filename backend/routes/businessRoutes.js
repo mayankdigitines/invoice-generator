@@ -9,13 +9,19 @@ const {
   getBusinessUsers,
   updateBusinessUser,
   getBusinessStats,
+  manageSubscription,
+  getBusinessById,
 } = require('../controllers/businessController');
 const { createBusinessUser } = require('../controllers/authController');
 
 // Super Admin Routes
 router.post('/create', protect, admin, createBusiness);
 router.get('/all', protect, admin, getAllBusinesses);
+router.get('/:id/details', protect, admin, getBusinessById); // Specific business details
 router.put('/:id', protect, admin, saveProfile); // Admin update business
+// Subscription
+router.post('/:businessId/subscription', protect, admin, manageSubscription);
+
 // User Management for Business
 router.get('/:id/users', protect, admin, getBusinessUsers);
 router.post('/users/create', protect, admin, createBusinessUser);

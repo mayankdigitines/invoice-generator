@@ -26,6 +26,14 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { format } from 'date-fns';
 
@@ -34,6 +42,12 @@ export default function BusinessDetails() {
   const navigate = useNavigate();
 
   const [business, setBusiness] = useState(null);
+  const [subscriptionModalOpen, setSubscriptionModalOpen] = useState(false);
+  const [subscriptionForm, setSubscriptionForm] = useState({
+    planType: 'monthly',
+    amount: '',
+    paymentStatus: 'paid',
+  });
   const [stats, setStats] = useState({
     totalRevenue: 0,
     totalTax: 0,
@@ -62,20 +76,16 @@ export default function BusinessDetails() {
     const fetchData = async () => {
       setLoading(true);
       try {
-        // 1. Get Business Profile (reuse getProfile logic or fetch from all list logic?)
-        // Since we don't have a direct "getById" public/admin for simple profile in routes easily without context,
-        // let's assume we can fetch it via the list or maybe we should add a specific get route.
-        // Actually, we can use the list and find locally OR just assume existing data.
-        // BETTER: I'll assume we can use the existing /business/all but filtered, OR I'll rely on the stats/invoices mostly.
-        // For now, let's try to get profile via a new endpoint or just display ID if name not found.
-        // Wait, businessController has `getProfile` but it uses `req.user.businessId` OR `req.params.id`.
-        // So `GET /api/business/profile?id=...`? No, route is `router.get('/profile', protect, getProfile);` which checks params.id too.
-        // But the route path is just `/profile`. It doesn't have `/:id`.
-        // Ah, `router.put('/:id', ...)` exists for update.
-        // Let's rely on stats and invoices for now. The stats probably don't return business name.
-        // I will add a small fetch for business details if I can, or just loop through all if cached.
-        // Let's just create a quick helper to get business name if needed, or ignore for MVP.
-        // Actually, better to fetch invoices and stats.
+        // Fetch Business Details
+        const businessRes = await api.get(`/business/${businessId}/details`);
+        setBusiness(businessRes.data);
+        if (businessRes.data?.subscription) {
+            setSubscriptionForm({
+                planType: businessRes.data.subscription.planType || 'monthly',
+                amount: businessRes.data.subscription.amount || '',
+                paymentStatus: businessRes.data.subscription.paymentStatus || 'paid'
+            });
+        }
 
         // Fetch Stats
         const statsRes = await api.get(`/business/${businessId}/stats`);
@@ -103,6 +113,19 @@ export default function BusinessDetails() {
       fetchData();
     }
   }, [businessId, page, debouncedSearch]);
+
+  const handleSubscriptionSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await api.post(`/business/${businessId}/subscription`, subscriptionForm);
+      setBusiness(res.data);
+      setSubscriptionModalOpen(false);
+      alert('Subscription updated successfully');
+    } catch (error) {
+       console.error(error);
+       alert('Failed to update subscription');
+    }
+  };
 
   if (loading) {
     return (
@@ -169,6 +192,41 @@ export default function BusinessDetails() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Subscription Card */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+                <CardTitle>Subscription</CardTitle>
+                <CardDescription>Manage business subscription plan</CardDescription>
+            </div>
+            <Button onClick={() => setSubscriptionModalOpen(true)}>Manage Subscription</Button>
+        </CardHeader>
+        <CardContent>
+            {business?.subscription?.status === 'active' ? (
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <div className="text-sm font-medium leading-none mb-1">Plan Type</div>
+                        <div className="font-medium capitalize">{business.subscription.planType}</div>
+                    </div>
+                    <div>
+                        <div className="text-sm font-medium leading-none mb-1">Status</div>
+                        <div className="font-medium capitalize text-green-600">{business.subscription.status}</div>
+                    </div>
+                     <div>
+                        <div className="text-sm font-medium leading-none mb-1">Start Date</div>
+                        <div className="font-medium">{business.subscription.startDate ? format(new Date(business.subscription.startDate), 'dd MMM yyyy') : '-'}</div>
+                    </div>
+                    <div>
+                        <div className="text-sm font-medium leading-none mb-1">End Date</div>
+                        <div className="font-medium">{business.subscription.endDate ? format(new Date(business.subscription.endDate), 'dd MMM yyyy') : '-'}</div>
+                    </div>
+                </div>
+            ) : (
+                <div className="text-muted-foreground mr-4">No active subscription. Status: {business?.subscription?.status || 'None'}</div>
+            )}
+        </CardContent>
+      </Card>
 
       {/* Invoices List */}
       <Card>
@@ -261,6 +319,55 @@ export default function BusinessDetails() {
           </div>
         </CardContent>
       </Card>
+
+      <Dialog open={subscriptionModalOpen} onOpenChange={setSubscriptionModalOpen}>
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Manage Subscription</DialogTitle>
+                <DialogDescription>Add or update subscription for this business.</DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleSubscriptionSubmit} className="space-y-4">
+                <div className="space-y-2">
+                    <label htmlFor="planType" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Plan Type</label>
+                    <select
+                        id="planType"
+                        className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                        value={subscriptionForm.planType}
+                        onChange={(e) => setSubscriptionForm({...subscriptionForm, planType: e.target.value})}
+                    >
+                        <option value="monthly">Monthly</option>
+                        <option value="yearly">Yearly</option>
+                    </select>
+                </div>
+                <div className="space-y-2">
+                    <label htmlFor="amount" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Amount</label>
+                    <Input
+                        id="amount"
+                        type="number"
+                        value={subscriptionForm.amount}
+                        onChange={(e) => setSubscriptionForm({...subscriptionForm, amount: e.target.value})}
+                        required
+                    />
+                </div>
+                <div className="space-y-2">
+                    <label htmlFor="paymentStatus" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Payment Status</label>
+                     <select
+                        id="paymentStatus"
+                        className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                        value={subscriptionForm.paymentStatus}
+                        onChange={(e) => setSubscriptionForm({...subscriptionForm, paymentStatus: e.target.value})}
+                    >
+                        <option value="paid">Paid</option>
+                        <option value="pending">Pending</option>
+                        <option value="failed">Failed</option>
+                    </select>
+                </div>
+                <DialogFooter>
+                    <Button type="submit">Save Subscription</Button>
+                </DialogFooter>
+            </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

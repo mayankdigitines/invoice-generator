@@ -9,10 +9,14 @@ const {
   updateInvoice,
   deleteInvoice,
   getSingleInvoice,
+  exportInvoices,
 } = require('../controllers/invoiceController');
 
 // Save invoice data
 router.post('/create', protect, createInvoice);
+
+// Export invoices (Must be before /:id)
+router.get('/export', protect, exportInvoices);
 
 // Get single invoice by ID (Public for shared link)
 router.get('/:id/:businessId', getInvoiceById);

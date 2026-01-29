@@ -107,6 +107,11 @@ exports.saveProfile = async (req, res, next) => {
       return res.status(400).json({ message: 'No business context found' });
     }
 
+    // Security: Prevent non-admins from updating subscription details
+    if (req.user.role !== 'super_admin') {
+      delete req.body.subscription;
+    }
+
     const profile = await Business.findByIdAndUpdate(businessId, req.body, {
       new: true,
     });
@@ -134,6 +139,54 @@ exports.getProfile = async (req, res, next) => {
     if (!profile)
       return res.status(404).json({ message: 'Business profile not found' });
     res.json(profile);
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.manageSubscription = async (req, res, next) => {
+  try {
+    const { businessId } = req.params;
+    const { planType, amount, paymentStatus, startDate } = req.body;
+
+    const business = await Business.findById(businessId);
+    if (!business) {
+      return res.status(404).json({ message: 'Business not found' });
+    }
+
+    const start = startDate ? new Date(startDate) : new Date();
+    let end = new Date(start);
+
+    if (planType === 'monthly') {
+      end.setMonth(end.getMonth() + 1);
+    } else if (planType === 'yearly') {
+      end.setFullYear(end.getFullYear() + 1);
+    }
+
+    business.subscription = {
+      planType,
+      amount,
+      startDate: start,
+      endDate: end,
+      paymentStatus,
+      status: paymentStatus === 'paid' ? 'active' : 'inactive',
+    };
+
+    await business.save();
+    res.json(business);
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.getBusinessById = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const business = await Business.findById(id);
+    if (!business) {
+      return res.status(404).json({ message: 'Business not found' });
+    }
+    res.json(business);
   } catch (error) {
     next(error);
   }

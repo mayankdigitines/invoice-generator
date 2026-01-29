@@ -1,6 +1,7 @@
 const Invoice = require('../models/Invoice');
 const Item = require('../models/Item');
 const Customer = require('../models/Customer');
+const { Parser } = require('json2csv');
 
 exports.createInvoice = async (req, res, next) => {
   try {
@@ -244,11 +245,14 @@ exports.getAllInvoices = async (req, res, next) => {
       }
     }
 
-    // Search Logic (Invoice Number OR Customer Name)
+    // Search Logic (Invoice Number OR Customer Name OR Customer Phone)
     if (search) {
-      // Find customers matching the search name
+      // Find customers matching the search name or phone
       const customers = await Customer.find({
-        name: { $regex: search, $options: 'i' },
+        $or: [
+          { name: { $regex: search, $options: 'i' } },
+          { phone: { $regex: search, $options: 'i' } },
+        ],
       }).select('_id');
 
       const customerIds = customers.map((c) => c._id);
@@ -279,7 +283,97 @@ exports.getAllInvoices = async (req, res, next) => {
   }
 };
 
-// 7. Get Single Invoice for Logged-In User
+// 7. Export Invoices
+exports.exportInvoices = async (req, res, next) => {
+  try {
+    const {
+      search = '',
+      startDate,
+      endDate,
+      businessId, // Allow businessId override for Super Admin
+    } = req.query;
+
+    let targetBusinessId = req.user.businessId;
+
+    // Super Admin Override
+    if (req.user.role === 'super_admin' && businessId) {
+      targetBusinessId = businessId;
+    }
+
+    const query = {
+      businessId: targetBusinessId,
+    };
+
+    // Date Filter
+    if (startDate || endDate) {
+      query.createdAt = {};
+      if (startDate) query.createdAt.$gte = new Date(startDate);
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        query.createdAt.$lte = end;
+      }
+    }
+
+    // Search Logic (Invoice Number OR Customer Name OR Customer Phone)
+    if (search) {
+      // Find customers matching the search name or phone
+      const customers = await Customer.find({
+        $or: [
+          { name: { $regex: search, $options: 'i' } },
+          { phone: { $regex: search, $options: 'i' } },
+        ],
+      }).select('_id');
+
+      const customerIds = customers.map((c) => c._id);
+
+      query.$or = [
+        { invoiceNumber: { $regex: search, $options: 'i' } },
+        { customer: { $in: customerIds } },
+      ];
+    }
+
+    const invoices = await Invoice.find(query)
+      .populate('customer')
+      .sort({ createdAt: -1 })
+      .lean();
+
+    if (invoices.length === 0) {
+      return res.status(404).json({ message: 'No invoices found to export' });
+    }
+
+    const fields = [
+      { label: 'Invoice Number', value: 'invoiceNumber' },
+      { label: 'Customer Name', value: 'customerName' },
+      { label: 'Customer Phone', value: 'customerPhone' },
+      { label: 'Date', value: 'date' },
+      { label: 'Subtotal', value: 'amount' },
+      { label: 'Tax', value: 'tax' },
+      { label: 'Grand Total', value: 'grandTotal' },
+    ];
+
+    const data = invoices.map((inv) => ({
+      invoiceNumber: inv.invoiceNumber,
+      customerName: inv.customer?.name || 'N/A',
+      customerPhone: inv.customer?.phone || 'N/A',
+      date: new Date(inv.createdAt).toLocaleDateString(),
+      amount: inv.totalAmount.toFixed(2),
+      tax: inv.taxAmount.toFixed(2),
+      grandTotal: inv.grandTotal.toFixed(2),
+    }));
+
+    const json2csvParser = new Parser({ fields });
+    const csv = json2csvParser.parse(data);
+
+    res.header('Content-Type', 'text/csv');
+    res.header('Content-Disposition', 'attachment; filename="invoices.csv"');
+    res.send(csv);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// 8. Get Single Invoice for Logged-In User
 exports.getSingleInvoice = async (req, res, next) => {
   try {
     const query = {

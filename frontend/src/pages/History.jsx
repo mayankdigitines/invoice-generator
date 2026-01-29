@@ -19,6 +19,7 @@ import {
   FileText,
   Trash2,
   Edit,
+  Download,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
@@ -103,6 +104,37 @@ export default function History() {
     setPage(1);
   };
 
+  const handleExport = async () => {
+    try {
+      const params = {
+        search: debouncedSearch,
+        startDate: dateRange.start
+          ? format(dateRange.start, 'yyyy-MM-dd')
+          : '',
+        endDate: dateRange.end ? format(dateRange.end, 'yyyy-MM-dd') : '',
+      };
+
+      const response = await api.get('/invoices/export', {
+        params,
+        responseType: 'blob',
+      });
+
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute(
+        'download',
+        `invoices-${format(new Date(), 'yyyy-MM-dd')}.csv`,
+      );
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (error) {
+      console.error('Failed to export invoices:', error);
+      alert('Failed to export invoices');
+    }
+  };
+
   const handleDelete = async (id) => {
     try {
       setDeletingId(id);
@@ -126,6 +158,10 @@ export default function History() {
             View and manage your generated invoices.
           </p>
         </div>
+        <Button onClick={handleExport} variant="outline">
+          <Download className="mr-2 h-4 w-4" />
+          Export CSV
+        </Button>
       </div>
 
       {/* Filters Section */}
@@ -134,7 +170,7 @@ export default function History() {
           <div className="relative flex-1">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search by Invoice # or Customer..."
+              placeholder="Search by Invoice #, Name or Phone..."
               className="pl-9"
               value={search}
               onChange={(e) => setSearch(e.target.value)}

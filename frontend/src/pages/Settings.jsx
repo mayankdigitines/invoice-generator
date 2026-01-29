@@ -10,7 +10,8 @@ import {
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useTheme } from '../context/ThemeContext';
-import { Sun, Moon, Save, Building2, Check } from 'lucide-react';
+import { Sun, Moon, Save, Building2, Check, CreditCard } from 'lucide-react';
+import { format } from 'date-fns';
 
 export default function Settings() {
   const [form, setForm] = useState({
@@ -198,6 +199,45 @@ export default function Settings() {
               </Button>
             </div>
           </form>
+        </CardContent>
+      </Card>
+
+      {/* Business Subscription Card */}
+      <Card className="border-muted/60 shadow-sm">
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <CreditCard className="h-5 w-5 text-primary" />
+            <CardTitle>Subscription Plan</CardTitle>
+          </div>
+          <CardDescription>
+            Your current subscription details.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+            {form.subscription?.status === 'active' ? (
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                    <div className="space-y-1">
+                        <span className="text-sm font-medium text-muted-foreground">Plan</span>
+                        <div className="font-semibold capitalize text-lg">{form.subscription.planType}</div>
+                    </div>
+                    <div className="space-y-1">
+                        <span className="text-sm font-medium text-muted-foreground">Status</span>
+                        <div className="font-semibold capitalize text-green-600 custom-status-badge">{form.subscription.status}</div>
+                    </div>
+                     <div className="space-y-1">
+                        <span className="text-sm font-medium text-muted-foreground">Start Date</span>
+                        <div className="font-medium">{form.subscription.startDate ? format(new Date(form.subscription.startDate), 'dd MMM yyyy') : '-'}</div>
+                    </div>
+                    <div className="space-y-1">
+                        <span className="text-sm font-medium text-muted-foreground">End Date</span>
+                        <div className="font-medium">{form.subscription.endDate ? format(new Date(form.subscription.endDate), 'dd MMM yyyy') : '-'}</div>
+                    </div>
+                </div>
+            ) : (
+                <div className="text-center py-6 text-muted-foreground">
+                    No active subscription found. Please contact support.
+                </div>
+            )}
         </CardContent>
       </Card>
     </div>

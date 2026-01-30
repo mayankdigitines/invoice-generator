@@ -9,6 +9,8 @@ const {
   getBusinessUsers,
   updateBusinessUser,
   getBusinessStats,
+  getMyBusinessStats,
+  getBusinessAnalytics,
   manageSubscription,
   getBusinessById,
 } = require('../controllers/businessController');
@@ -29,6 +31,8 @@ router.put('/users/:userId', protect, admin, updateBusinessUser);
 router.get('/:id/stats', protect, admin, getBusinessStats);
 
 // Business Owner Routes
+router.get('/stats', protect, getMyBusinessStats);
+router.get('/analytics', protect, getBusinessAnalytics);
 router.post('/profile', protect, saveProfile); // /api/business/profile
 router.get('/profile', protect, getProfile);
 

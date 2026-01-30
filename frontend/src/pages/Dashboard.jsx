@@ -13,6 +13,14 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
+import {
   Trash2,
   Plus,
   Search,
@@ -23,6 +31,7 @@ import {
   Check,
   AlertCircle,
   Share2,
+  CalendarIcon,
 } from 'lucide-react';
 import { validateInvoiceForm } from '../lib/validation';
 
@@ -37,6 +46,7 @@ export default function Dashboard() {
   const [errors, setErrors] = useState({});
 
   // Invoice Form States
+  const [date, setDate] = useState(new Date());
   const [customer, setCustomer] = useState({
     name: '',
     phone: '',
@@ -75,7 +85,9 @@ export default function Dashboard() {
           promises.push(api.get(`/invoices/${id}`));
         }
 
-        const [itemsRes, busRes, invoiceRes] = await Promise.all(promises);
+        const [itemsRes, busRes, invoiceRes] = await Promise.all(
+          promises,
+        );
 
         // Handle items response
         if (Array.isArray(itemsRes.data)) {
@@ -94,6 +106,9 @@ export default function Dashboard() {
             phone: inv.customer?.phone || '',
             address: inv.customer?.address || '',
           });
+          if (inv.date) {
+            setDate(new Date(inv.date));
+          }
           // Ensure items have all fields for editing
           setItems(
             inv.items.map((i) => ({
@@ -231,9 +246,9 @@ export default function Dashboard() {
     try {
       let res;
       if (isEditing) {
-        res = await api.put(`/invoices/${id}`, { customer, items });
+        res = await api.put(`/invoices/${id}`, { customer, items, date });
       } else {
-        res = await api.post('/invoices/create', { customer, items });
+        res = await api.post('/invoices/create', { customer, items, date });
       }
       setGeneratedInvoice(res.data);
       setIsSuccess(true);
@@ -377,13 +392,13 @@ export default function Dashboard() {
           >
             {isGenerating ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />{' '}
-                {isEditing ? 'Updating...' : 'Generating...'}
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                <span className="ml-2">{isEditing ? 'Updating...' : 'Generating...'}</span>
               </>
             ) : (
               <>
-                <FileText className="mr-2 h-4 w-4" />{' '}
-                {isEditing ? 'Update Invoice' : 'Generate Invoice'}
+                <FileText className="mr-2 h-4 w-4" />
+                <span className="ml-2">{isEditing ? 'Update Invoice' : 'Generate Invoice'}</span>
               </>
             )}
           </Button>
@@ -399,6 +414,33 @@ export default function Dashboard() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4 pt-4">
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold uppercase text-muted-foreground flex justify-between">
+                    Invoice Date
+                  </label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant={'outline'}
+                        className={cn(
+                          'w-full justify-start text-left font-normal',
+                          !date && 'text-muted-foreground',
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {date ? format(date, 'PPP') : <span>Pick a date</span>}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={date}
+                        onSelect={setDate}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
                 <div className="space-y-2 relative">
                   <label className="text-xs font-semibold uppercase text-muted-foreground flex justify-between">
                     Phone Number

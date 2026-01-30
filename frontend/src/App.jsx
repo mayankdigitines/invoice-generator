@@ -15,6 +15,7 @@ import {
   FileClock,
   Loader2,
   Menu,
+  BarChart2,
 } from 'lucide-react';
 import { ThemeProvider } from './context/ThemeContext.jsx';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -23,6 +24,7 @@ import { Sidebar, MobileSidebar } from '@/components/Layout/Sidebar';
 
 // Lazy Load Pages
 const Dashboard = lazy(() => import('./pages/Dashboard'));
+const Analytics = lazy(() => import('./pages/Analytics'));
 const SuperAdminDashboard = lazy(() => import('./pages/SuperAdminDashboard'));
 const History = lazy(() => import('./pages/History'));
 const Settings = lazy(() => import('./pages/Settings'));
@@ -85,6 +87,12 @@ function Layout() {
         icon: <PlusCircle size={20} />,
         label: 'New Invoice',
         isActive: location.pathname === '/',
+      },
+      {
+        to: '/analytics',
+        icon: <BarChart2 size={20} />,
+        label: 'Analytics',
+        isActive: location.pathname === '/analytics',
       },
       {
         to: '/items',
@@ -182,6 +190,7 @@ function App() {
                 {/* Business User Routes Only */}
                 <Route element={<RequireBusiness />}>
                   <Route path="/edit/:id" element={<Dashboard />} />
+                  <Route path="/analytics" element={<Analytics />} />
                   <Route path="/items" element={<Items />} />
                   <Route path="/history" element={<History />} />
                   <Route path="/settings" element={<Settings />} />

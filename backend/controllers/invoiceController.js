@@ -5,7 +5,7 @@ const { Parser } = require('json2csv');
 
 exports.createInvoice = async (req, res, next) => {
   try {
-    const { customer, items } = req.body;
+    const { customer, items, date } = req.body;
     const businessId = req.user.businessId;
 
     if (!businessId)
@@ -68,6 +68,7 @@ exports.createInvoice = async (req, res, next) => {
       customer: customerDoc._id,
       businessId,
       items: processedItems,
+      date: date || new Date(),
       totalAmount,
       taxAmount: totalTax,
       grandTotal: totalAmount + totalTax,

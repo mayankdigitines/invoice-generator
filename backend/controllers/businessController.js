@@ -179,6 +179,111 @@ exports.manageSubscription = async (req, res, next) => {
   }
 };
 
+exports.getMyBusinessStats = async (req, res, next) => {
+  try {
+    const businessId = req.user.businessId;
+    if (!businessId) {
+      return res
+        .status(400)
+        .json({ message: 'No business associated with user' });
+    }
+    const Invoice = require('../models/Invoice');
+
+    const revenueStats = await Invoice.aggregate([
+      { $match: { businessId: new mongoose.Types.ObjectId(businessId) } },
+      {
+        $group: {
+          _id: null,
+          totalRevenue: { $sum: '$grandTotal' },
+          totalTax: { $sum: '$taxAmount' },
+          count: { $sum: 1 },
+        },
+      },
+    ]);
+
+    const stats = revenueStats[0] || {
+      totalRevenue: 0,
+      totalTax: 0,
+      count: 0,
+    };
+
+    res.json(stats);
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.getBusinessAnalytics = async (req, res, next) => {
+  try {
+    const businessId = req.user.businessId;
+    if (!businessId) {
+      return res
+        .status(400)
+        .json({ message: 'No business associated with user' });
+    }
+    const Invoice = require('../models/Invoice');
+
+    // Get monthly revenue for the last 6 months
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
+    const monthlyRevenue = await Invoice.aggregate([
+      {
+        $match: {
+          businessId: new mongoose.Types.ObjectId(businessId),
+        },
+      },
+      {
+        $addFields: {
+          effectiveDate: { $ifNull: ['$date', '$createdAt'] },
+        },
+      },
+      {
+        $match: {
+          effectiveDate: { $gte: sixMonthsAgo },
+        },
+      },
+      {
+        $group: {
+          _id: {
+            month: { $month: '$effectiveDate' },
+            year: { $year: '$effectiveDate' },
+          },
+          revenue: { $sum: '$grandTotal' },
+          count: { $sum: 1 },
+        },
+      },
+      { $sort: { '_id.year': 1, '_id.month': 1 } },
+    ]);
+
+    // Format for frontend (e.g., "Jan 2024")
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+
+    const formattedData = monthlyRevenue.map((item) => ({
+      name: `${months[item._id.month - 1]} ${item._id.year}`,
+      revenue: item.revenue,
+      invoices: item.count,
+    }));
+
+    res.json(formattedData);
+  } catch (error) {
+    next(error);
+  }
+};
+
 exports.getBusinessById = async (req, res, next) => {
   try {
     const { id } = req.params;

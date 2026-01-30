@@ -23,6 +23,7 @@ const invoiceSchema = new mongoose.Schema(
         amount: Number,
       },
     ],
+    date: { type: Date, required: true, default: Date.now },
     totalAmount: Number,
     taxAmount: Number,
     grandTotal: Number,
@@ -32,6 +33,7 @@ const invoiceSchema = new mongoose.Schema(
 
 // Indexes for Search & Sorting
 invoiceSchema.index({ createdAt: -1 });
+invoiceSchema.index({ date: -1 });
 // Compound index for unique invoice number per business
 invoiceSchema.index({ invoiceNumber: 1, businessId: 1 }, { unique: true });
 invoiceSchema.index({ customer: 1 });

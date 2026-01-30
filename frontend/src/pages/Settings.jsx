@@ -214,7 +214,7 @@ export default function Settings() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-            {form.subscription?.status === 'active' ? (
+            {['active', 'pending', 'failed'].includes(form.subscription?.status) ? (
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                     <div className="space-y-1">
                         <span className="text-sm font-medium text-muted-foreground">Plan</span>
@@ -222,7 +222,11 @@ export default function Settings() {
                     </div>
                     <div className="space-y-1">
                         <span className="text-sm font-medium text-muted-foreground">Status</span>
-                        <div className="font-semibold capitalize text-green-600 custom-status-badge">{form.subscription.status}</div>
+                        <div className={`font-semibold capitalize custom-status-badge ${
+                            form.subscription.status === 'active' ? 'text-green-600' :
+                            form.subscription.status === 'pending' ? 'text-yellow-600' :
+                            'text-red-600'
+                        }`}>{form.subscription.status}</div>
                     </div>
                      <div className="space-y-1">
                         <span className="text-sm font-medium text-muted-foreground">Start Date</span>

@@ -24,7 +24,7 @@ const businessSchema = new mongoose.Schema(
       },
       status: {
         type: String,
-        enum: ['active', 'expired', 'inactive'],
+        enum: ['active', 'expired', 'inactive', 'pending', 'failed'],
         default: 'inactive',
       },
       paymentStatus: {

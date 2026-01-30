@@ -203,7 +203,7 @@ export default function BusinessDetails() {
             <Button onClick={() => setSubscriptionModalOpen(true)}>Manage Subscription</Button>
         </CardHeader>
         <CardContent>
-            {business?.subscription?.status === 'active' ? (
+            {['active', 'pending', 'failed'].includes(business?.subscription?.status) ? (
                 <div className="grid grid-cols-2 gap-4">
                     <div>
                         <div className="text-sm font-medium leading-none mb-1">Plan Type</div>
@@ -211,7 +211,11 @@ export default function BusinessDetails() {
                     </div>
                     <div>
                         <div className="text-sm font-medium leading-none mb-1">Status</div>
-                        <div className="font-medium capitalize text-green-600">{business.subscription.status}</div>
+                        <div className={`font-medium capitalize ${
+                            business.subscription.status === 'active' ? 'text-green-600' :
+                            business.subscription.status === 'pending' ? 'text-yellow-600' :
+                            'text-red-600'
+                        }`}>{business.subscription.status}</div>
                     </div>
                      <div>
                         <div className="text-sm font-medium leading-none mb-1">Start Date</div>

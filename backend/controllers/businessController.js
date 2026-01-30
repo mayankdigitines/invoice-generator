@@ -163,13 +163,22 @@ exports.manageSubscription = async (req, res, next) => {
       end.setFullYear(end.getFullYear() + 1);
     }
 
+    let subscriptionStatus = 'inactive';
+    if (paymentStatus === 'paid') {
+      subscriptionStatus = 'active';
+    } else if (paymentStatus === 'pending') {
+      subscriptionStatus = 'pending';
+    } else if (paymentStatus === 'failed') {
+      subscriptionStatus = 'failed';
+    }
+
     business.subscription = {
       planType,
       amount,
       startDate: start,
       endDate: end,
       paymentStatus,
-      status: paymentStatus === 'paid' ? 'active' : 'inactive',
+      status: subscriptionStatus,
     };
 
     await business.save();

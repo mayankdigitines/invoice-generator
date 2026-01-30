@@ -11,6 +11,7 @@ const businessRoutes = require('./routes/businessRoutes');
 const itemRoutes = require('./routes/itemRoutes');
 const invoiceRoutes = require('./routes/invoiceRoutes');
 const customerRoutes = require('./routes/customerRoutes');
+const queryRoutes = require('./routes/queryRoutes');
 
 const app = express();
 
@@ -32,6 +33,7 @@ app.use('/api/business', businessRoutes);
 app.use('/api/items', itemRoutes);
 app.use('/api/customers', customerRoutes);
 app.use('/api/invoices', invoiceRoutes);
+app.use('/api/queries', queryRoutes);
 
 // Error Handling Middleware
 app.use((err, req, res, next) => {

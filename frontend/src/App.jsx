@@ -16,6 +16,7 @@ import {
   Loader2,
   Menu,
   BarChart2,
+  HelpCircle,
 } from 'lucide-react';
 import { ThemeProvider } from './context/ThemeContext.jsx';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -28,6 +29,7 @@ const Analytics = lazy(() => import('./pages/Analytics'));
 const SuperAdminDashboard = lazy(() => import('./pages/SuperAdminDashboard'));
 const History = lazy(() => import('./pages/History'));
 const Settings = lazy(() => import('./pages/Settings'));
+const Support = lazy(() => import('./pages/Support'));
 const Items = lazy(() => import('./pages/Items'));
 const SharedInvoice = lazy(() => import('./pages/SharedInvoice'));
 const Login = lazy(() => import('./pages/Login'));
@@ -112,6 +114,12 @@ function Layout() {
         label: 'Settings',
         isActive: location.pathname === '/settings',
       },
+      {
+        to: '/support',
+        icon: <HelpCircle size={20} />,
+        label: 'Support',
+        isActive: location.pathname === '/support',
+      },
     ];
   }, [user, location.pathname]);
 
@@ -194,6 +202,7 @@ function App() {
                   <Route path="/items" element={<Items />} />
                   <Route path="/history" element={<History />} />
                   <Route path="/settings" element={<Settings />} />
+                  <Route path="/support" element={<Support />} />
                 </Route>
 
                 <Route

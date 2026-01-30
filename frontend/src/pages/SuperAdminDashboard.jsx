@@ -12,6 +12,13 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -19,18 +26,13 @@ import {
   DialogFooter,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { Plus, UserPlus, Loader2, Edit, Users, Key, Eye } from 'lucide-react';
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-} from '@/components/ui/card';
+import { Plus, UserPlus, Loader2, Edit, Users, Key, Eye, MessageSquare, Check, X as XIcon } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 export default function SuperAdminDashboard() {
   const navigate = useNavigate();
   const [businesses, setBusinesses] = useState([]);
+  const [queries, setQueries] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Modals State
@@ -39,11 +41,14 @@ export default function SuperAdminDashboard() {
   const [isUsersModalOpen, setIsUsersModalOpen] = useState(false);
   const [isCreateUserModalOpen, setIsCreateUserModalOpen] = useState(false);
   const [isEditUserModalOpen, setIsEditUserModalOpen] = useState(false);
+  const [isQueryModalOpen, setIsQueryModalOpen] = useState(false);
 
   // Data State
   const [selectedBusiness, setSelectedBusiness] = useState(null);
   const [businessUsers, setBusinessUsers] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
+  const [selectedQuery, setSelectedQuery] = useState(null);
+  const [adminResponse, setAdminResponse] = useState('');
 
   // Forms State
   const [businessForm, setBusinessForm] = useState({
@@ -66,9 +71,23 @@ export default function SuperAdminDashboard() {
       setBusinesses(data);
     } catch (error) {
       console.error('Failed to fetch businesses:', error);
-    } finally {
-      setLoading(false);
     }
+  };
+
+  const fetchQueries = async () => {
+    try {
+      const { data } = await api.get('/queries/all');
+      setQueries(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error('Failed to fetch queries:', error);
+      setQueries([]); 
+    }
+  };
+
+  const loadData = async () => {
+     setLoading(true);
+     await Promise.all([fetchBusinesses(), fetchQueries()]);
+     setLoading(false);
   };
 
   const fetchBusinessUsers = async (businessId) => {
@@ -81,7 +100,7 @@ export default function SuperAdminDashboard() {
   };
 
   useEffect(() => {
-    fetchBusinesses();
+    loadData();
   }, []);
 
   const resetBusinessForm = () => {
@@ -153,6 +172,20 @@ export default function SuperAdminDashboard() {
     }
   };
 
+  const handleUpdateQueryStatus = async (status) => {
+    try {
+      await api.put(`/queries/${selectedQuery._id}`, {
+        status,
+        adminResponse 
+      });
+      setIsQueryModalOpen(false);
+      setAdminResponse('');
+      fetchQueries();
+    } catch (error) {
+      alert('Failed to update query');
+    }
+  };
+
   const openEditBusiness = (business) => {
     setSelectedBusiness(business);
     setBusinessForm({
@@ -215,78 +248,145 @@ export default function SuperAdminDashboard() {
         </Button>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Registered Businesses</CardTitle>
-          <CardDescription>
-            A list of all businesses using the platform.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Address</TableHead>
-                <TableHead>Contact</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {businesses.map((business) => (
-                <TableRow key={business._id}>
-                  <TableCell className="font-medium">{business.name}</TableCell>
-                  <TableCell>{business.address}</TableCell>
-                  <TableCell>
-                    <div className="text-sm">{business.email}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {business.phone}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => navigate(`/business/${business._id}`)}
-                        title="View Details"
+      <Tabs defaultValue="businesses">
+        <TabsList>
+          <TabsTrigger value="businesses">Businesses</TabsTrigger>
+          <TabsTrigger value="queries">Queries & Support</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="businesses">
+          <Card>
+            <CardHeader>
+              <CardTitle>Registered Businesses</CardTitle>
+              <CardDescription>
+                A list of all businesses using the platform.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Address</TableHead>
+                    <TableHead>Contact</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {businesses.map((business) => (
+                    <TableRow key={business._id}>
+                      <TableCell className="font-medium">{business.name}</TableCell>
+                      <TableCell>{business.address}</TableCell>
+                      <TableCell>
+                        <div className="text-sm">{business.email}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {business.phone}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => navigate(`/business/${business._id}`)}
+                            title="View Details"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => openEditBusiness(business)}
+                            title="Edit Details"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => openUsersModal(business)}
+                            title="Manage Users"
+                          >
+                            <Users className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {businesses.length === 0 && (
+                    <TableRow>
+                      <TableCell
+                        colSpan={4}
+                        className="text-center py-8 text-muted-foreground"
                       >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => openEditBusiness(business)}
-                        title="Edit Details"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => openUsersModal(business)}
-                        title="Manage Users"
-                      >
-                        <Users className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-              {businesses.length === 0 && (
-                <TableRow>
-                  <TableCell
-                    colSpan={4}
-                    className="text-center py-8 text-muted-foreground"
-                  >
-                    No businesses found.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+                        No businesses found.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="queries">
+          <Card>
+            <CardHeader>
+              <CardTitle>Support Queries</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Business</TableHead>
+                    <TableHead>Subject</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {queries.map((q) => (
+                    <TableRow key={q._id}>
+                      <TableCell>{new Date(q.createdAt).toLocaleDateString()}</TableCell>
+                      <TableCell>
+                        <div className="font-medium">{q.businessId?.name}</div>
+                        <div className="text-xs text-muted-foreground">{q.businessId?.email}</div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="font-medium">{q.subject}</div>
+                        <div className="text-xs text-muted-foreground truncate max-w-[200px]">{q.message}</div>
+                      </TableCell>
+                      <TableCell>
+                        <span className={`px-2 py-1 rounded text-xs ${
+                          q.status === 'Resolved' ? 'bg-green-100 text-green-800' :
+                          q.status === 'Rejected' ? 'bg-red-100 text-red-800' :
+                          'bg-yellow-100 text-yellow-800'
+                        }`}>
+                          {q.status}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => {
+                            setSelectedQuery(q);
+                            setAdminResponse(q.adminResponse || '');
+                            setIsQueryModalOpen(true);
+                          }}
+                        >
+                          <MessageSquare className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
       {/* Create Business Modal */}
       <Dialog open={isBusinessModalOpen} onOpenChange={setIsBusinessModalOpen}>
@@ -612,6 +712,53 @@ export default function SuperAdminDashboard() {
               <Button type="submit">Update Credentials</Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+      {/* Query Detail Modal */}
+      <Dialog open={isQueryModalOpen} onOpenChange={setIsQueryModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Handle Query</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="p-4 bg-muted rounded-lg space-y-2">
+              <div className="flex justify-between text-sm text-muted-foreground">
+                <span>{selectedQuery?.businessId?.name}</span>
+                <span>{selectedQuery && new Date(selectedQuery.createdAt).toLocaleDateString()}</span>
+              </div>
+              <h4 className="font-semibold">{selectedQuery?.subject}</h4>
+              <p className="text-sm">{selectedQuery?.message}</p>
+            </div>
+            
+            <div className="space-y-2">
+              <Label>Admin Response</Label>
+              <textarea
+                className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                value={adminResponse}
+                onChange={(e) => setAdminResponse(e.target.value)}
+                placeholder="Write your response here..."
+              />
+            </div>
+            
+            <DialogFooter className="gap-2 sm:gap-0">
+               <div className="flex gap-2 w-full justify-end">
+                <Button 
+                  variant="destructive" 
+                  onClick={() => handleUpdateQueryStatus('Rejected')}
+                  disabled={!adminResponse}
+                >
+                  <XIcon className="mr-2 h-4 w-4" /> Reject
+                </Button>
+                <Button 
+                  className="bg-green-600 hover:bg-green-700" 
+                  onClick={() => handleUpdateQueryStatus('Resolved')}
+                  disabled={!adminResponse}
+                >
+                  <Check className="mr-2 h-4 w-4" /> Resolve
+                </Button>
+              </div>
+            </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

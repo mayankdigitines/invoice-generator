@@ -4,6 +4,7 @@ const connectDB = require('./config/db');
 const cors = require('cors');
 const path = require('path');
 const morgan = require('morgan');
+const initCronJobs = require('./services/cronService');
 
 // Import Routes
 const authRoutes = require('./routes/authRoutes');
@@ -17,6 +18,9 @@ const app = express();
 
 // Connect Database
 connectDB();
+
+// Initialize Cron Jobs
+initCronJobs();
 
 // Middleware
 app.use(

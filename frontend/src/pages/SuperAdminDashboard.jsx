@@ -358,7 +358,7 @@ export default function SuperAdminDashboard() {
                       </TableCell>
                       <TableCell>
                         <div className="font-medium">{q.subject}</div>
-                        <div className="text-xs text-muted-foreground truncate max-w-[200px]">{q.message}</div>
+                        <div className="text-xs text-muted-foreground truncate max-w-50">{q.message}</div>
                       </TableCell>
                       <TableCell>
                         <span className={`px-2 py-1 rounded text-xs ${
@@ -741,7 +741,7 @@ export default function SuperAdminDashboard() {
             <div className="space-y-2">
               <Label>Admin Response</Label>
               <textarea
-                className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex min-h-20 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 value={adminResponse}
                 onChange={(e) => setAdminResponse(e.target.value)}
                 placeholder="Write your response here..."

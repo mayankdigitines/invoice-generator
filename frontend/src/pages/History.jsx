@@ -343,10 +343,10 @@ export default function History() {
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                          title="Download"
+                          title="View PDF"
                           onClick={() =>
                             window.open(
-                              `${window.location.origin}/share/${inv._id}/${inv.businessId}`,
+                              `/share/${inv._id}/${inv.businessId}`,
                               '_blank',
                             )
                           }

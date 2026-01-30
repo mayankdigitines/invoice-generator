@@ -1,6 +1,7 @@
 const Invoice = require('../models/Invoice');
 const Item = require('../models/Item');
 const Customer = require('../models/Customer');
+const Business = require('../models/Business');
 const { Parser } = require('json2csv');
 
 exports.createInvoice = async (req, res, next) => {
@@ -10,6 +11,31 @@ exports.createInvoice = async (req, res, next) => {
 
     if (!businessId)
       return res.status(400).json({ message: 'Business context missing' });
+
+    // 0. Check Subscription Status
+    const business = await Business.findById(businessId);
+    if (!business) {
+      return res.status(404).json({ message: 'Business not found' });
+    }
+
+    // Skip check for super_admin if they ever create invocies (unlikely but good for safety)
+    // But usually businesses create invoices.
+
+    // Allow invoice creation if status is 'active' AND endDate is in future
+    // Or if there is no subscription field (assuming legacy or free tier if applicable, but user said "renew subscription")
+    // Assuming strict enforcement:
+    if (business.subscription) {
+      const now = new Date();
+      if (
+        business.subscription.status !== 'active' ||
+        (business.subscription.endDate && business.subscription.endDate < now)
+      ) {
+        return res.status(403).json({
+          message:
+            'Subscription expired or inactive. Please renew to create invoices.',
+        });
+      }
+    }
 
     // A. Handle Customer (Find or Create) -> SCoped by Business
     let customerDoc = await Customer.findOne({
@@ -347,6 +373,7 @@ exports.exportInvoices = async (req, res, next) => {
       { label: 'Invoice Number', value: 'invoiceNumber' },
       { label: 'Customer Name', value: 'customerName' },
       { label: 'Customer Phone', value: 'customerPhone' },
+      { label: 'Customer Address', value: 'customerAddress' },
       { label: 'Date', value: 'date' },
       { label: 'Subtotal', value: 'amount' },
       { label: 'Tax', value: 'tax' },
@@ -357,6 +384,7 @@ exports.exportInvoices = async (req, res, next) => {
       invoiceNumber: inv.invoiceNumber,
       customerName: inv.customer?.name || 'N/A',
       customerPhone: inv.customer?.phone || 'N/A',
+      customerAddress: inv.customer?.address || 'N/A',
       date: new Date(inv.createdAt).toLocaleDateString(),
       amount: inv.totalAmount.toFixed(2),
       tax: inv.taxAmount.toFixed(2),

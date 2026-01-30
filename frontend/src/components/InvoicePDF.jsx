@@ -78,7 +78,7 @@ const styles = StyleSheet.create({
     borderBottomColor: BORDER_COLOR,
     backgroundColor: '#e0e0e0', // Light gray background for header
     alignItems: 'center',
-    height: 24,
+    height: 20,
     textAlign: 'center',
     flexGrow: 1,
   },
@@ -87,13 +87,13 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: BORDER_COLOR,
     alignItems: 'center',
-    minHeight: 24,
+    minHeight: 20,
   },
   tableFooterRow: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#f5f5f5',
-    minHeight: 24,
+    minHeight: 20,
   },
 
   // Columns with Vertical Borders
@@ -102,7 +102,7 @@ const styles = StyleSheet.create({
     borderRightWidth: 1,
     borderRightColor: BORDER_COLOR,
     height: '100%',
-    padding: 4,
+    padding: 3,
     display: 'flex',
     justifyContent: 'center',
   },
@@ -136,21 +136,30 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   totalsTable: {
-    width: '45%',
+    minWidth: '40%',
+    maxWidth: '50%',
     borderWidth: 1,
     borderColor: BORDER_COLOR,
   },
   totalRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    padding: 6,
+    alignItems: 'center',
+    paddingTop: 3,
+    paddingBottom: 3,
+    paddingLeft: 4,
+    paddingRight: 4,
     borderBottomWidth: 1,
-    borderBottomColor: '#eeeeee',
+    borderBottomColor: BORDER_COLOR,
   },
   grandTotalRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    padding: 8,
+    alignItems: 'center',
+    paddingTop: 4,
+    paddingBottom: 4,
+    paddingLeft: 4,
+    paddingRight: 4,
     backgroundColor: '#e0e0e0',
     fontWeight: 'bold',
   },
@@ -222,6 +231,17 @@ export const InvoicePDF = ({ invoice, business }) => {
     (sum, item) => sum + Number(item.quantity),
     0,
   );
+  
+  const totalGross = processedItems.reduce(
+      (sum, item) => sum + item.grossAmount,
+      0
+  );
+
+  const totalDiscount = processedItems.reduce(
+      (sum, item) => sum + item.discountAmount,
+      0
+  );
+
   const totalTaxable = processedItems.reduce(
     (sum, item) => sum + item.taxableValue,
     0,
@@ -241,14 +261,23 @@ export const InvoicePDF = ({ invoice, business }) => {
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.headerLeft}>
-            {business?.logoUrl ? (
-              <Image style={styles.logo} src={business.logoUrl} />
-            ) : (
-              <Text style={styles.companyName}>{business?.name}</Text>
+            {business?.logoUrl && (
+              <Image
+                style={styles.logo}
+                // business.logoUrl: https://i.ibb.co/sJH51Qw5/download.jpg
+                src={business.logoUrl}
+                /*
+                src={{
+                  uri:
+                    business.logoUrl,
+                  method: 'GET',
+                  headers: { 'Cache-Control': 'no-cache' },
+                  body: null,
+                }}
+                */
+              />
             )}
-            {business.logoUrl && (
-              <Text style={styles.companyName}>{business?.name}</Text>
-            )}
+            <Text style={styles.companyName}>{business?.name}</Text>
             <Text style={styles.companyDetails}>{business?.address}</Text>
             <Text style={styles.companyDetails}>{business?.email}</Text>
             <Text style={styles.companyDetails}>{business?.phone}</Text>
@@ -389,17 +418,25 @@ export const InvoicePDF = ({ invoice, business }) => {
         <View style={styles.summarySection}>
           <View style={styles.totalsTable}>
             <View style={styles.totalRow}>
-              <Text>Taxable Amount:</Text>
-              <Text>{formatCurrency(invoice.totalAmount)}</Text>
+              <Text>Total Gross Amount:</Text>
+              <Text>{formatCurrency(totalGross)}</Text>
             </View>
             <View style={styles.totalRow}>
-              <Text>Review Tax Amount:</Text>
-              <Text>{formatCurrency(invoice.taxAmount)}</Text>
+              <Text>Total Discount:</Text>
+              <Text>- {formatCurrency(totalDiscount)}</Text>
+            </View>
+            <View style={styles.totalRow}>
+              <Text style={styles.textBold}>Taxable Amount:</Text>
+              <Text style={styles.textBold}>{formatCurrency(totalTaxable)}</Text>
+            </View>
+            <View style={styles.totalRow}>
+              <Text>Total Tax:</Text>
+              <Text>{formatCurrency(totalTax)}</Text>
             </View>
             <View style={styles.grandTotalRow}>
               <Text style={styles.textBold}>GRAND TOTAL:</Text>
               <Text style={styles.textBold}>
-                Rs. {formatCurrency(invoice.grandTotal)}
+                Rs. {formatCurrency(totalAmount)}
               </Text>
             </View>
           </View>

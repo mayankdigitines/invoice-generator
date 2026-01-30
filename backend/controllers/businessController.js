@@ -135,9 +135,30 @@ exports.getProfile = async (req, res, next) => {
       return res.status(400).json({ message: 'No business context found' });
     }
 
-    const profile = await Business.findById(businessId);
+    const profile = await Business.findById(businessId).lean(); // Use lean to allow adding properties
     if (!profile)
       return res.status(404).json({ message: 'Business profile not found' });
+
+    // Check for subscription expiry reminder
+    if (profile.subscription && profile.subscription.endDate) {
+      const now = new Date();
+      const endDate = new Date(profile.subscription.endDate);
+      const diffTime = endDate - now;
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+      // Flag if expiring within 7 days and currently active
+      if (
+        diffDays <= 7 &&
+        diffDays >= 0 &&
+        profile.subscription.status === 'active'
+      ) {
+        profile.subscriptionExpiringSoon = true;
+        profile.daysRemaining = diffDays;
+      } else if (diffDays < 0 || profile.subscription.status !== 'active') {
+        profile.subscriptionExpired = true;
+      }
+    }
+
     res.json(profile);
   } catch (error) {
     next(error);

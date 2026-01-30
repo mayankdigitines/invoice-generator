@@ -115,7 +115,7 @@ export default function Analytics() {
             <CardTitle>Revenue Overview</CardTitle>
           </CardHeader>
           <CardContent className="pl-2">
-            <div className="h-[350px] w-full">
+            <div className="h-87.5 w-full">
               {chartData.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={chartData}>
@@ -161,7 +161,7 @@ export default function Analytics() {
             <CardTitle>Invoices Created</CardTitle>
           </CardHeader>
           <CardContent className="pl-2">
-            <div className="h-[350px] w-full">
+            <div className="h-87.5 w-full">
               {chartData.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={chartData}>

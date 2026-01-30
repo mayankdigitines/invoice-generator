@@ -352,6 +352,9 @@ export default function SuperAdminDashboard() {
                       <TableCell>
                         <div className="font-medium">{q.businessId?.name}</div>
                         <div className="text-xs text-muted-foreground">{q.businessId?.email}</div>
+                        {q.businessId?.phone && (
+                          <div className="text-xs text-muted-foreground">{q.businessId?.phone}</div>
+                        )}
                       </TableCell>
                       <TableCell>
                         <div className="font-medium">{q.subject}</div>
@@ -722,11 +725,16 @@ export default function SuperAdminDashboard() {
           </DialogHeader>
           <div className="space-y-4">
             <div className="p-4 bg-muted rounded-lg space-y-2">
-              <div className="flex justify-between text-sm text-muted-foreground">
-                <span>{selectedQuery?.businessId?.name}</span>
+              <div className="flex justify-between items-start text-sm text-muted-foreground">
+                <div className="flex flex-col gap-1">
+                  <span className="font-medium text-foreground">{selectedQuery?.businessId?.name}</span>
+                  <span className="text-xs">
+                    Phone: <a href={`tel:${selectedQuery?.businessId?.phone}`} className="hover:underline">{selectedQuery?.businessId?.phone || 'N/A'}</a>
+                  </span>
+                </div>
                 <span>{selectedQuery && new Date(selectedQuery.createdAt).toLocaleDateString()}</span>
               </div>
-              <h4 className="font-semibold">{selectedQuery?.subject}</h4>
+              <h4 className="font-semibold pt-1">{selectedQuery?.subject}</h4>
               <p className="text-sm">{selectedQuery?.message}</p>
             </div>
             

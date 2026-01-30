@@ -15,6 +15,9 @@ const {
 // Save invoice data
 router.post('/create', protect, createInvoice);
 
+// Get all invoices (History/List)
+router.get('/', protect, getAllInvoices);
+
 // Export invoices (Must be before /:id)
 router.get('/export', protect, exportInvoices);
 

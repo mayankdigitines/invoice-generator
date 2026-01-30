@@ -393,7 +393,11 @@ export default function SuperAdminDashboard() {
 
       {/* Create Business Modal */}
       <Dialog open={isBusinessModalOpen} onOpenChange={setIsBusinessModalOpen}>
-        <DialogContent className="sm:max-w-106.25">
+        <DialogContent
+          className="sm:max-w-106.25"
+          onInteractOutside={(e) => e.preventDefault()}
+          onEscapeKeyDown={(e) => e.preventDefault()}
+        >
           <DialogHeader>
             <DialogTitle>Create New Business</DialogTitle>
             <DialogDescription>

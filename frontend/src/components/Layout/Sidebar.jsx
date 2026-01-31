@@ -1,4 +1,3 @@
-import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { ChevronLeft, ChevronRight, LogOut, X } from 'lucide-react';

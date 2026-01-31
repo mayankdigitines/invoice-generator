@@ -12,27 +12,19 @@ exports.createInvoice = async (req, res, next) => {
     if (!businessId)
       return res.status(400).json({ message: 'Business context missing' });
 
-    // 0. Check Subscription Status
-    const business = await Business.findById(businessId);
-    if (!business) {
+    // Subscription Check
+    const businessChecker = await Business.findById(businessId);
+    if (!businessChecker)
       return res.status(404).json({ message: 'Business not found' });
-    }
 
-    // Skip check for super_admin if they ever create invocies (unlikely but good for safety)
-    // But usually businesses create invoices.
-
-    // Allow invoice creation if status is 'active' AND endDate is in future
-    // Or if there is no subscription field (assuming legacy or free tier if applicable, but user said "renew subscription")
-    // Assuming strict enforcement:
-    if (business.subscription) {
-      const now = new Date();
-      if (
-        business.subscription.status !== 'active' ||
-        (business.subscription.endDate && business.subscription.endDate < now)
-      ) {
+    if (req.user.role !== 'superadmin') {
+      const isExpired =
+        !businessChecker.subscriptionEndDate ||
+        new Date() > new Date(businessChecker.subscriptionEndDate);
+      if (businessChecker.subscriptionStatus !== 'active' || isExpired) {
         return res.status(403).json({
-          message:
-            'Subscription expired or inactive. Please renew to create invoices.',
+          message: 'Active subscription required to create invoices.',
+          code: 'SUBSCRIPTION_REQUIRED',
         });
       }
     }

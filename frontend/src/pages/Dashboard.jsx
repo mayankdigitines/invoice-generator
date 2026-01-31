@@ -10,7 +10,6 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
 import {
   Popover,
@@ -24,17 +23,12 @@ import {
   Trash2,
   Plus,
   Search,
-  CheckCircle,
   FileText,
   Loader2,
   Copy,
-  Check,
   AlertCircle,
-  Share2,
   CalendarIcon,
   ExternalLink,
-  RefreshCw,
-  Send,
 } from 'lucide-react';
 import { validateInvoiceForm } from '../lib/validation';
 
@@ -66,9 +60,9 @@ export default function Dashboard() {
   const [searchQuery, setSearchQuery] = useState('');
 
   // Success & PDF State
-  const [business, setBusiness] = useState(null);
   const [generatedInvoice, setGeneratedInvoice] = useState(null);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [subscriptionRequired, setSubscriptionRequired] = useState(false);
 
   // Optimized Inventory Lookup
   const inventoryMap = useMemo(() => {
@@ -81,16 +75,13 @@ export default function Dashboard() {
       try {
         const promises = [
           api.get('/items?all=true'), // Fetch all for dropdown
-          api.get('/business/profile'), // Business Profile
         ];
 
         if (isEditing) {
           promises.push(api.get(`/invoices/${id}`));
         }
 
-        const [itemsRes, busRes, invoiceRes] = await Promise.all(
-          promises,
-        );
+        const [itemsRes, invoiceRes] = await Promise.all(promises);
 
         // Handle items response
         if (Array.isArray(itemsRes.data)) {
@@ -98,8 +89,6 @@ export default function Dashboard() {
         } else if (itemsRes.data.items) {
           setInventory(itemsRes.data.items);
         }
-
-        setBusiness(busRes.data);
 
         // Populate Invoice if Editing
         if (invoiceRes && invoiceRes.data) {
@@ -239,9 +228,6 @@ export default function Dashboard() {
     setErrors(validationErrors);
 
     if (!isValid) {
-      // Find the first error to scroll to or alert
-      const firstError = Object.values(validationErrors)[0];
-      // alert(`Form Error: ${firstError}`); // Optional: keep purely visual
       return;
     }
 
@@ -257,6 +243,10 @@ export default function Dashboard() {
       setGeneratedInvoice(res.data);
       setIsSuccess(true);
     } catch (err) {
+      if (err.response?.data?.code === 'SUBSCRIPTION_REQUIRED') {
+        setSubscriptionRequired(true);
+        return;
+      }
       const msg = err.response?.data?.message || err.message || 'Unknown error';
       alert(`Error: ${msg}`);
       console.error('Error handling invoice', err);
@@ -280,7 +270,6 @@ export default function Dashboard() {
   // --- Success View ---
   /* Success View Logic Moved to Dialog at bottom */
 
-
   if (loading) {
     return (
       <div className="flex bg-muted/20 items-center justify-center min-h-[60vh]">
@@ -292,40 +281,6 @@ export default function Dashboard() {
   // --- Main Dashboard View ---
   return (
     <div className="max-w-6xl mx-auto space-y-8 pb-20 pt-8">
-      {/* Subscription Alerts */}
-      {business && business.subscriptionExpiringSoon && (
-        <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6 rounded-r-md shadow-sm">
-          <div className="flex">
-            <div className="shrink-0">
-              <AlertCircle className="h-5 w-5 text-yellow-500" />
-            </div>
-            <div className="ml-3">
-              <p className="text-sm text-yellow-700">
-                <span className="font-medium">Subscription Expiring Soon!</span>
-                {' '}Your subscription will expire in {business.daysRemaining ?? 'few'} days.
-                Please renew to continue generating invoices without interruption.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {business && (business.subscriptionExpired || (business.subscription && business.subscription.status !== 'active')) && (
-        <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-6 rounded-r-md shadow-sm">
-          <div className="flex">
-            <div className="shrink-0">
-              <AlertCircle className="h-5 w-5 text-red-500" />
-            </div>
-            <div className="ml-3">
-              <p className="text-sm text-red-700">
-                <span className="font-medium">Subscription Expired!</span>
-                {' '}Your subscription is inactive. You cannot generate new invoices until you renew your plan.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Invoice Generator Section */}
       <div className="space-y-6">
         <div className="flex justify-between items-center">
@@ -348,12 +303,16 @@ export default function Dashboard() {
             {isGenerating ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                <span className="ml-2">{isEditing ? 'Updating...' : 'Generating...'}</span>
+                <span className="ml-2">
+                  {isEditing ? 'Updating...' : 'Generating...'}
+                </span>
               </>
             ) : (
               <>
                 <FileText className="mr-2 h-4 w-4" />
-                <span className="ml-2">{isEditing ? 'Update Invoice' : 'Generate Invoice'}</span>
+                <span className="ml-2">
+                  {isEditing ? 'Update Invoice' : 'Generate Invoice'}
+                </span>
               </>
             )}
           </Button>
@@ -363,14 +322,14 @@ export default function Dashboard() {
           {/* Left: Customer Details */}
           <div className="md:col-span-1 space-y-6">
             <Card className="h-full border-0 shadow-lg rounded-xl overflow-hidden">
-              <CardHeader className="bg-gradient-to-r from-blue-50 to-white pb-3 pt-4 border-b border-blue-100/50">
+              <CardHeader className=" pt-4 border-b">
                 <CardTitle className="text-sm font-bold text-blue-700 uppercase tracking-wide">
                   Customer Info
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3 pt-4 px-4">
                 <div className="space-y-1.5">
-                  <label className="text-[11px] font-bold uppercase text-gray-500 flex justify-between tracking-wider">
+                  <label className="text-[11px] font-bold uppercase flex justify-between tracking-wider">
                     Invoice Date
                   </label>
                   <Popover>
@@ -424,11 +383,11 @@ export default function Dashboard() {
                   </div>
 
                   {showResults && searchResults.length > 0 && (
-                    <div className="absolute z-50 w-full bg-white dark:bg-zinc-950 border rounded-md shadow-xl mt-1 max-h-48 overflow-y-auto">
+                    <div className="absolute z-50 w-full border rounded-md shadow-xl mt-1 max-h-48 overflow-y-auto">
                       {searchResults.map((res) => (
                         <div
                           key={res._id}
-                          className="px-3 py-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 cursor-pointer text-sm border-b last:border-0"
+                          className="px-3 py-2 cursor-pointer text-sm border-b last:border-0"
                           onClick={() => selectCustomer(res)}
                         >
                           <div className="font-medium">{res.name}</div>
@@ -493,8 +452,8 @@ export default function Dashboard() {
           {/* Right: Items Table */}
           <div className="md:col-span-2">
             <Card className="h-full border-0 shadow-lg rounded-xl overflow-hidden">
-              <CardHeader className="bg-gradient-to-r from-gray-50 to-white pb-3 pt-4 border-b border-gray-100 flex flex-row items-center justify-between">
-                <CardTitle className="text-sm font-bold text-gray-700 uppercase tracking-wide">
+              <CardHeader className="pb-3 pt-4 border-b flex flex-row items-center justify-between">
+                <CardTitle className="text-sm font-bold uppercase tracking-wide">
                   Items List
                 </CardTitle>
                 <Button
@@ -508,7 +467,7 @@ export default function Dashboard() {
               </CardHeader>
               <CardContent className="p-0">
                 {/* Desktop Header */}
-                <div className="hidden md:grid bg-gray-50/50 font-semibold text-[10px] text-gray-500 uppercase tracking-widest grid-cols-12 gap-2 px-4 py-2 border-b">
+                <div className="hidden md:grid font-semibold text-[10px] uppercase tracking-widest grid-cols-12 gap-2 px-4 py-2 border-b">
                   <div className="col-span-5">Items</div>
                   <div className="col-span-1 text-center">Qty</div>
                   <div className="col-span-2 text-right">Price</div>
@@ -528,7 +487,7 @@ export default function Dashboard() {
                     return (
                       <div
                         key={index}
-                        className="group relative flex flex-col md:grid md:grid-cols-12 gap-4 md:gap-2 p-4 md:p-2 border rounded-lg md:rounded-none md:border-b last:border-0 items-start md:items-center bg-card md:hover:bg-blue-50/30 transition-colors shadow-sm md:shadow-none mb-4 md:mb-0"
+                        className="group relative flex flex-col md:grid md:grid-cols-12 gap-4 md:gap-2 p-4 md:p-2 border rounded-lg md:rounded-none md:border-b last:border-0 items-start md:items-center bg-card shadow-sm md:shadow-none mb-4 md:mb-0"
                       >
                         {/* Mobile Delete Button */}
                         <button
@@ -679,9 +638,9 @@ export default function Dashboard() {
               </CardContent>
 
               {/* Totals Section */}
-              <div className="bg-gray-50/50 p-4 border-t">
+              <div className="p-4 border-t">
                 <div className="flex flex-col items-end space-y-1">
-                  <div className="flex justify-between w-56 text-xs text-gray-500 font-medium">
+                  <div className="flex justify-between w-56 text-xs font-medium">
                     <span>Subtotal</span>
                     <span>₹{totals.subtotal.toFixed(2)}</span>
                   </div>
@@ -689,11 +648,11 @@ export default function Dashboard() {
                     <span>Discount</span>
                     <span>- ₹{totals.discount.toFixed(2)}</span>
                   </div>
-                  <div className="flex justify-between w-56 text-xs text-gray-500 font-medium">
+                  <div className="flex justify-between w-56 text-xs font-medium">
                     <span>Tax (GST)</span>
                     <span>+ ₹{totals.tax.toFixed(2)}</span>
                   </div>
-                  <div className="flex justify-between w-56 font-bold text-base pt-2 border-t border-gray-200 mt-2 text-gray-900">
+                  <div className="flex justify-between w-56 font-bold text-base pt-2 border-t mt-2">
                     <span>Total</span>
                     <span>₹{totals.total.toFixed(2)}</span>
                   </div>
@@ -710,7 +669,11 @@ export default function Dashboard() {
           <DialogHeader>
             <DialogTitle>Success</DialogTitle>
             <DialogDescription>
-              Invoice <span className="font-mono font-medium">#{generatedInvoice?.invoiceNumber}</span> created successfully.
+              Invoice{' '}
+              <span className="font-mono font-medium">
+                #{generatedInvoice?.invoiceNumber}
+              </span>{' '}
+              created successfully.
             </DialogDescription>
           </DialogHeader>
 
@@ -728,32 +691,40 @@ export default function Dashboard() {
             </Button>
 
             <div className="flex items-center space-x-2">
-               <Input
-                 readOnly
-                 value={generatedInvoice ? `${window.location.origin}/share/${generatedInvoice._id}/${generatedInvoice.businessId?._id || generatedInvoice.businessId}` : ''}
-                 className="flex-1 font-mono text-xs h-9 bg-muted/50"
-               />
-               <Button
-                 size="sm"
-                 variant="outline"
-                 className="shrink-0 h-9 w-9 p-0"
-                 onClick={() => {
-                   const shareUrl = `${window.location.origin}/share/${generatedInvoice?._id}/${generatedInvoice?.businessId?._id || generatedInvoice?.businessId}`;
-                   navigator.clipboard.writeText(shareUrl);
-                   setCopied(true);
-                   setTimeout(() => setCopied(false), 2000);
-                 }}
-               >
-                 {copied ? (
-                   <Check className="h-4 w-4 text-green-600" />
-                 ) : (
-                   <Copy className="h-4 w-4" />
-                 )}
-               </Button>
+              <Input
+                readOnly
+                value={
+                  generatedInvoice
+                    ? `${window.location.origin}/share/${generatedInvoice._id}/${generatedInvoice.businessId?._id || generatedInvoice.businessId}`
+                    : ''
+                }
+                className="flex-1 font-mono text-xs h-9 bg-muted/50"
+              />
+              <Button
+                size="sm"
+                variant="outline"
+                className="shrink-0 h-9 w-9 p-0"
+                onClick={() => {
+                  const shareUrl = `${window.location.origin}/share/${generatedInvoice?._id}/${generatedInvoice?.businessId?._id || generatedInvoice?.businessId}`;
+                  navigator.clipboard.writeText(shareUrl);
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 2000);
+                }}
+              >
+                {copied ? (
+                  <Check className="h-4 w-4 text-green-600" />
+                ) : (
+                  <Copy className="h-4 w-4" />
+                )}
+              </Button>
             </div>
 
             <div className="flex justify-between gap-3 pt-2">
-              <Button variant="ghost" className="flex-1" onClick={() => setIsSuccess(false)}>
+              <Button
+                variant="ghost"
+                className="flex-1"
+                onClick={() => setIsSuccess(false)}
+              >
                 Close
               </Button>
               <Button variant="outline" className="flex-1" onClick={resetForm}>
@@ -764,7 +735,34 @@ export default function Dashboard() {
         </DialogContent>
       </Dialog>
 
-
+      {/* Subscription Required Dialog */}
+      <Dialog
+        open={subscriptionRequired}
+        onOpenChange={setSubscriptionRequired}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-red-600">
+              Subscription Required
+            </DialogTitle>
+            <DialogDescription>
+              Your subscription plan has expired or is inactive. To create new
+              invoices, please purchase a subscription plan.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-3 mt-4">
+            <Button
+              variant="outline"
+              onClick={() => setSubscriptionRequired(false)}
+            >
+              Cancel
+            </Button>
+            <Button onClick={() => navigate('/subscription')}>
+              View Plans
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

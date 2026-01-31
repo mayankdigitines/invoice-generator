@@ -17,6 +17,9 @@ import {
   Menu,
   BarChart2,
   HelpCircle,
+  CreditCard,
+  Receipt,
+  Bell,
 } from 'lucide-react';
 import { ThemeProvider } from './context/ThemeContext.jsx';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -27,6 +30,8 @@ import { Sidebar, MobileSidebar } from '@/components/Layout/Sidebar';
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Analytics = lazy(() => import('./pages/Analytics'));
 const SuperAdminDashboard = lazy(() => import('./pages/SuperAdminDashboard'));
+const AdminNotifications = lazy(() => import('./pages/AdminNotifications'));
+const Notifications = lazy(() => import('./pages/Notifications'));
 const History = lazy(() => import('./pages/History'));
 const Settings = lazy(() => import('./pages/Settings'));
 const Support = lazy(() => import('./pages/Support'));
@@ -34,6 +39,10 @@ const Items = lazy(() => import('./pages/Items'));
 const SharedInvoice = lazy(() => import('./pages/SharedInvoice'));
 const Login = lazy(() => import('./pages/Login'));
 const BusinessDetails = lazy(() => import('./pages/BusinessDetails'));
+const SubscriptionPlans = lazy(() => import('./pages/SubscriptionPlans'));
+const Subscription = lazy(() => import('./pages/Subscription'));
+const Transactions = lazy(() => import('./pages/Transactions'));
+const MyTransactions = lazy(() => import('./pages/MyTransactions'));
 
 function LoadingSpinner() {
   return (
@@ -45,6 +54,7 @@ function LoadingSpinner() {
 
 function RequireAuth({ children }) {
   const { user, loading } = useAuth();
+  // eslint-disable-next-line no-unused-vars
   const location = useLocation();
 
   if (loading) {
@@ -52,7 +62,7 @@ function RequireAuth({ children }) {
   }
 
   if (!user) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
+    return <Navigate to="/login" replace />;
   }
 
   return children;
@@ -81,6 +91,24 @@ function Layout() {
           label: 'Overview',
           isActive: location.pathname === '/',
         },
+        {
+          to: '/admin/plans',
+          icon: <CreditCard size={20} />,
+          label: 'Subscription Plans',
+          isActive: location.pathname === '/admin/plans',
+        },
+        {
+          to: '/admin/transactions',
+          icon: <Receipt size={20} />,
+          label: 'Transactions',
+          isActive: location.pathname === '/admin/transactions',
+        },
+        {
+          to: '/admin/notifications',
+          icon: <Bell size={20} />,
+          label: 'Notifications',
+          isActive: location.pathname === '/admin/notifications',
+        },
       ];
     }
     return [
@@ -107,6 +135,24 @@ function Layout() {
         icon: <FileClock size={20} />,
         label: 'History',
         isActive: location.pathname === '/history',
+      },
+      {
+        to: '/subscription',
+        icon: <CreditCard size={20} />,
+        label: 'My Subscription',
+        isActive: location.pathname === '/subscription',
+      },
+      {
+        to: '/notifications',
+        icon: <Bell size={20} />,
+        label: 'Notifications',
+        isActive: location.pathname === '/notifications',
+      },
+      {
+        to: '/my-transactions',
+        icon: <Receipt size={20} />,
+        label: 'Transactions',
+        isActive: location.pathname === '/my-transactions',
       },
       {
         to: '/settings',
@@ -194,6 +240,12 @@ function App() {
                 }
               >
                 <Route path="/" element={<DashboardRouter />} />
+                <Route
+                  path="/admin/notifications"
+                  element={<AdminNotifications />}
+                />
+                <Route path="/admin/plans" element={<SubscriptionPlans />} />
+                <Route path="/admin/transactions" element={<Transactions />} />
 
                 {/* Business User Routes Only */}
                 <Route element={<RequireBusiness />}>
@@ -203,16 +255,19 @@ function App() {
                   <Route path="/history" element={<History />} />
                   <Route path="/settings" element={<Settings />} />
                   <Route path="/support" element={<Support />} />
+                  <Route path="/subscription" element={<Subscription />} />
+                  <Route path="/my-transactions" element={<MyTransactions />} />
+                  <Route path="/notifications" element={<Notifications />} />
                 </Route>
 
                 <Route
                   path="/business/:businessId"
                   element={<BusinessDetails />}
                 />
-              </Route>
 
-              {/* Catch all - Redirect to Home/Dashboard */}
-              <Route path="*" element={<Navigate to="/" replace />} />
+                {/* Catch all - Redirect to Home/Dashboard */}
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Route>
             </Routes>
           </Suspense>
         </AuthProvider>

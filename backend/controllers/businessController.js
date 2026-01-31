@@ -107,11 +107,6 @@ exports.saveProfile = async (req, res, next) => {
       return res.status(400).json({ message: 'No business context found' });
     }
 
-    // Security: Prevent non-admins from updating subscription details
-    if (req.user.role !== 'super_admin') {
-      delete req.body.subscription;
-    }
-
     const profile = await Business.findByIdAndUpdate(businessId, req.body, {
       new: true,
     });
@@ -139,71 +134,7 @@ exports.getProfile = async (req, res, next) => {
     if (!profile)
       return res.status(404).json({ message: 'Business profile not found' });
 
-    // Check for subscription expiry reminder
-    if (profile.subscription && profile.subscription.endDate) {
-      const now = new Date();
-      const endDate = new Date(profile.subscription.endDate);
-      const diffTime = endDate - now;
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-      // Flag if expiring within 7 days and currently active
-      if (
-        diffDays <= 7 &&
-        diffDays >= 0 &&
-        profile.subscription.status === 'active'
-      ) {
-        profile.subscriptionExpiringSoon = true;
-        profile.daysRemaining = diffDays;
-      } else if (diffDays < 0 || profile.subscription.status !== 'active') {
-        profile.subscriptionExpired = true;
-      }
-    }
-
     res.json(profile);
-  } catch (error) {
-    next(error);
-  }
-};
-
-exports.manageSubscription = async (req, res, next) => {
-  try {
-    const { businessId } = req.params;
-    const { planType, amount, paymentStatus, startDate } = req.body;
-
-    const business = await Business.findById(businessId);
-    if (!business) {
-      return res.status(404).json({ message: 'Business not found' });
-    }
-
-    const start = startDate ? new Date(startDate) : new Date();
-    let end = new Date(start);
-
-    if (planType === 'monthly') {
-      end.setMonth(end.getMonth() + 1);
-    } else if (planType === 'yearly') {
-      end.setFullYear(end.getFullYear() + 1);
-    }
-
-    let subscriptionStatus = 'inactive';
-    if (paymentStatus === 'paid') {
-      subscriptionStatus = 'active';
-    } else if (paymentStatus === 'pending') {
-      subscriptionStatus = 'pending';
-    } else if (paymentStatus === 'failed') {
-      subscriptionStatus = 'failed';
-    }
-
-    business.subscription = {
-      planType,
-      amount,
-      startDate: start,
-      endDate: end,
-      paymentStatus,
-      status: subscriptionStatus,
-    };
-
-    await business.save();
-    res.json(business);
   } catch (error) {
     next(error);
   }

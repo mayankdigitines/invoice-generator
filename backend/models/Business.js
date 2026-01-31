@@ -8,31 +8,15 @@ const businessSchema = new mongoose.Schema(
     email: { type: String },
     phone: { type: String },
     logoUrl: { type: String },
-    subscription: {
-      planType: {
-        type: String,
-        enum: ['monthly', 'yearly'],
-      },
-      amount: {
-        type: Number,
-      },
-      startDate: {
-        type: Date,
-      },
-      endDate: {
-        type: Date,
-      },
-      status: {
-        type: String,
-        enum: ['active', 'expired', 'inactive', 'pending', 'failed'],
-        default: 'inactive',
-      },
-      paymentStatus: {
-        type: String,
-        enum: ['paid', 'pending', 'failed'],
-        default: 'pending',
-      },
+
+    // Subscription details
+    subscriptionStatus: {
+      type: String,
+      enum: ['active', 'inactive', 'expired'],
+      default: 'inactive',
     },
+    subscriptionEndDate: { type: Date },
+    lastSubscriptionValidation: { type: Date, default: Date.now },
   },
   { timestamps: true },
 );

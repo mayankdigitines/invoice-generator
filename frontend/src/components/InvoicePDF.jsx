@@ -205,6 +205,14 @@ const formatDate = (dateString) => {
   return `${day}/${month}/${year}`;
 };
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
+const getProxiedLogoUrl = (url) => {
+  if (!url) return null;
+  if (url.startsWith('data:') || url.startsWith('blob:')) return url;
+  return `${API_URL}/proxy/image?url=${encodeURIComponent(url)}`;
+};
+
 export const InvoicePDF = ({ invoice, business }) => {
   // Pre-calculate line item details to ensure consistency
   // Assuming input: item.price (unit), item.quantity, item.discount (%), item.gstRate (%), item.amount (total)
@@ -231,15 +239,15 @@ export const InvoicePDF = ({ invoice, business }) => {
     (sum, item) => sum + Number(item.quantity),
     0,
   );
-  
+
   const totalGross = processedItems.reduce(
-      (sum, item) => sum + item.grossAmount,
-      0
+    (sum, item) => sum + item.grossAmount,
+    0,
   );
 
   const totalDiscount = processedItems.reduce(
-      (sum, item) => sum + item.discountAmount,
-      0
+    (sum, item) => sum + item.discountAmount,
+    0,
   );
 
   const totalTaxable = processedItems.reduce(
@@ -255,6 +263,11 @@ export const InvoicePDF = ({ invoice, business }) => {
     0,
   );
 
+  // Overall Discount Calculation
+  const overallDiscountRate = invoice.overallDiscount || 0;
+  const overallDiscountAmount = (totalAmount * overallDiscountRate) / 100;
+  const finalGrandTotal = totalAmount - overallDiscountAmount;
+
   return (
     <Document>
       <Page size="A4" style={styles.page}>
@@ -264,17 +277,7 @@ export const InvoicePDF = ({ invoice, business }) => {
             {business?.logoUrl && (
               <Image
                 style={styles.logo}
-                // business.logoUrl: https://i.ibb.co/sJH51Qw5/download.jpg
-                src={business.logoUrl}
-                /*
-                src={{
-                  uri:
-                    business.logoUrl,
-                  method: 'GET',
-                  headers: { 'Cache-Control': 'no-cache' },
-                  body: null,
-                }}
-                */
+                src={getProxiedLogoUrl(business.logoUrl)}
               />
             )}
             <Text style={styles.companyName}>{business?.name}</Text>
@@ -361,6 +364,11 @@ export const InvoicePDF = ({ invoice, business }) => {
               </View>
               <View style={[styles.colBase, styles.colDesc]}>
                 <Text>{item.itemName}</Text>
+                {item.itemDescription && (
+                  <Text style={{ fontSize: 7, color: '#555', marginTop: 2 }}>
+                    {item.itemDescription}
+                  </Text>
+                )}
               </View>
               <View style={[styles.colBase, styles.colQty]}>
                 <Text>{item.quantity}</Text>
@@ -427,16 +435,24 @@ export const InvoicePDF = ({ invoice, business }) => {
             </View>
             <View style={styles.totalRow}>
               <Text style={styles.textBold}>Taxable Amount:</Text>
-              <Text style={styles.textBold}>{formatCurrency(totalTaxable)}</Text>
+              <Text style={styles.textBold}>
+                {formatCurrency(totalTaxable)}
+              </Text>
             </View>
             <View style={styles.totalRow}>
               <Text>Total Tax:</Text>
               <Text>{formatCurrency(totalTax)}</Text>
             </View>
+            {overallDiscountRate > 0 && (
+              <View style={styles.totalRow}>
+                <Text>Overall Discount ({overallDiscountRate}%):</Text>
+                <Text>- {formatCurrency(overallDiscountAmount)}</Text>
+              </View>
+            )}
             <View style={styles.grandTotalRow}>
               <Text style={styles.textBold}>GRAND TOTAL:</Text>
               <Text style={styles.textBold}>
-                Rs. {formatCurrency(totalAmount)}
+                Rs. {formatCurrency(finalGrandTotal)}
               </Text>
             </View>
           </View>

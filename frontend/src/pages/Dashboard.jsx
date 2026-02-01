@@ -1,15 +1,16 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../api';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from '@/components/ui/dialog';
 import {
   Popover,
@@ -22,27 +23,29 @@ import { cn } from '@/lib/utils';
 import {
   Trash2,
   Plus,
-  Search,
-  FileText,
   Loader2,
   Copy,
-  AlertCircle,
-  CalendarIcon,
-  ExternalLink,
+  Calendar as CalendarIcon,
+  Check,
+  Zap,
+  Search,
 } from 'lucide-react';
 import { validateInvoiceForm } from '../lib/validation';
 
-export default function Dashboard() {
+export default function InvoiceGenerator() {
   const { id } = useParams();
   const navigate = useNavigate();
   const isEditing = Boolean(id);
+
+  // Refs for Auto-Focus
+  const itemNameRefs = useRef([]);
 
   const [loading, setLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
   const [copied, setCopied] = useState(false);
   const [errors, setErrors] = useState({});
 
-  // Invoice Form States
+  // Form Data
   const [date, setDate] = useState(new Date());
   const [customer, setCustomer] = useState({
     name: '',
@@ -50,82 +53,83 @@ export default function Dashboard() {
     address: '',
   });
   const [items, setItems] = useState([
-    { name: '', quantity: 1, price: 0, gstRate: 18, discount: 0 },
+    {
+      id: 'initial_0',
+      name: '',
+      description: '',
+      quantity: 1,
+      price: 0,
+      gstRate: 18,
+      discount: 0,
+    },
   ]);
-  const [inventory, setInventory] = useState([]); // All items for dropdown
+  const [overallDiscount, setOverallDiscount] = useState(0);
 
-  // Search & Results State
+  // Data Lists
+  const [inventory, setInventory] = useState([]);
   const [searchResults, setSearchResults] = useState([]);
   const [showResults, setShowResults] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Success & PDF State
+  // Post-Submit State
   const [generatedInvoice, setGeneratedInvoice] = useState(null);
   const [isSuccess, setIsSuccess] = useState(false);
   const [subscriptionRequired, setSubscriptionRequired] = useState(false);
 
-  // Optimized Inventory Lookup
-  const inventoryMap = useMemo(() => {
-    return new Map(inventory.map((item) => [item.name, item]));
-  }, [inventory]);
+  // Optimized Lookup
+  const inventoryMap = useMemo(
+    () => new Map(inventory.map((i) => [i.name, i])),
+    [inventory],
+  );
 
-  // --- Fetch Initial Data ---
+  // --- Initialization ---
   useEffect(() => {
-    const fetchData = async () => {
+    const init = async () => {
       try {
-        const promises = [
-          api.get('/items?all=true'), // Fetch all for dropdown
-        ];
+        const [itemsRes, invoiceRes] = await Promise.all([
+          api.get('/items?all=true'),
+          isEditing
+            ? api.get(`/invoices/${id}`)
+            : Promise.resolve({ data: null }),
+        ]);
 
-        if (isEditing) {
-          promises.push(api.get(`/invoices/${id}`));
+        if (itemsRes.data?.items || Array.isArray(itemsRes.data)) {
+          setInventory(
+            Array.isArray(itemsRes.data) ? itemsRes.data : itemsRes.data.items,
+          );
         }
 
-        const [itemsRes, invoiceRes] = await Promise.all(promises);
-
-        // Handle items response
-        if (Array.isArray(itemsRes.data)) {
-          setInventory(itemsRes.data);
-        } else if (itemsRes.data.items) {
-          setInventory(itemsRes.data.items);
-        }
-
-        // Populate Invoice if Editing
-        if (invoiceRes && invoiceRes.data) {
+        if (invoiceRes?.data) {
           const inv = invoiceRes.data;
           setCustomer({
             name: inv.customer?.name || '',
             phone: inv.customer?.phone || '',
             address: inv.customer?.address || '',
           });
-          if (inv.date) {
-            setDate(new Date(inv.date));
-          }
-          // Ensure items have all fields for editing
+          if (inv.date) setDate(new Date(inv.date));
           setItems(
             inv.items.map((i) => ({
+              id: crypto.randomUUID(),
               name: i.itemName || i.name,
+              description: i.itemDescription || '',
               quantity: i.quantity,
               price: i.price,
               gstRate: i.gstRate || 0,
               discount: i.discount || 0,
             })),
           );
+          if (inv.overallDiscount) setOverallDiscount(inv.overallDiscount);
         }
-      } catch (err) {
-        console.error('Failed to load dashboard data', err);
-        if (isEditing) {
-          alert('Failed to load invoice details');
-          navigate('/history');
-        }
+      } catch (e) {
+        console.error(e);
       } finally {
         setLoading(false);
       }
     };
-    fetchData();
-  }, [id, isEditing, navigate]);
+    init();
+  }, [id, isEditing]);
 
-  // --- Debounced Search ---
+  // --- Search Logic ---
   useEffect(() => {
     const timer = setTimeout(async () => {
       if (searchQuery.length > 2) {
@@ -133,632 +137,645 @@ export default function Dashboard() {
           const res = await api.get(`/customers/search?query=${searchQuery}`);
           setSearchResults(res.data);
           setShowResults(true);
-        } catch (err) {
-          console.error('Search failed', err);
+        } catch (e) {
+          console.error(e);
         }
       } else {
         setShowResults(false);
       }
-    }, 300); // 300ms debounce
-
+    }, 300);
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // --- Handlers ---
-  const handleSearchChange = (val) => {
-    // Update customer phone immediately for UI
-    setCustomer((prev) => ({
-      ...prev,
-      [isNaN(val) ? 'name' : 'phone']: val,
-    }));
-    setSearchQuery(val);
+  // --- Core Logic ---
+  const handleCustomerPhone = (val) => {
+    const cleanVal = val.replace(/\D/g, '').slice(0, 10);
+    setCustomer((prev) => ({ ...prev, phone: cleanVal }));
+    setSearchQuery(cleanVal);
+    if (errors.customerPhone) setErrors({ ...errors, customerPhone: null });
   };
-
-  const selectCustomer = useCallback((cust) => {
-    setCustomer({
-      name: cust.name,
-      phone: cust.phone,
-      address: cust.address || '',
-    });
-    setShowResults(false);
-  }, []);
 
   const addItem = useCallback(() => {
     setItems((prev) => [
       ...prev,
-      { name: '', quantity: 1, price: 0, gstRate: 18, discount: 0 },
+      {
+        id: crypto.randomUUID(),
+        name: '',
+        description: '',
+        quantity: 1,
+        price: 0,
+        gstRate: 18,
+        discount: 0,
+      },
     ]);
-  }, []);
+    // Auto-focus next tick
+    setTimeout(() => {
+      const lastIndex = items.length; // items state hasn't updated in this closure yet, so length is index of new item
+      itemNameRefs.current[lastIndex]?.focus();
+    }, 10);
+  }, [items.length]);
 
-  const removeItem = useCallback((index) => {
+  const handleKeyDown = (e, index) => {
+    if (e.key === 'Enter' && index === items.length - 1) {
+      e.preventDefault();
+      addItem();
+    }
+  };
+
+  const updateItem = (index, field, val) => {
     setItems((prev) => {
-      if (prev.length > 1) {
-        return prev.filter((_, i) => i !== index);
-      }
-      return prev;
-    });
-  }, []);
+      const copy = [...prev];
+      copy[index] = { ...copy[index], [field]: val };
 
-  const updateItem = useCallback(
-    (index, field, value) => {
-      setItems((prevItems) => {
-        const newItems = [...prevItems];
-        newItems[index] = { ...newItems[index], [field]: value };
-
-        // Auto-fill price from dropdown using optimized map
-        if (field === 'name') {
-          const found = inventoryMap.get(value);
-          if (found) {
-            newItems[index].price = found.price;
-            newItems[index].gstRate = found.gstRate;
-            newItems[index].discount = found.discount;
-          }
+      // Auto-fill from inventory
+      if (field === 'name') {
+        const match = inventoryMap.get(val);
+        if (match) {
+          copy[index].price = match.price;
+          copy[index].description = match.description || '';
+          copy[index].gstRate = match.gstRate;
+          copy[index].discount = match.discount;
         }
-        return newItems;
-      });
-    },
-    [inventoryMap],
-  );
+        if (errors[`item_${index}_name`]) {
+          const newErrs = { ...errors };
+          delete newErrs[`item_${index}_name`];
+          setErrors(newErrs);
+        }
+      }
+      return copy;
+    });
+  };
 
   const totals = useMemo(() => {
-    return items.reduce(
-      (acc, item) => {
-        const base = item.price * item.quantity;
-        const discountAmount = (base * item.discount) / 100;
-        const taxable = base - discountAmount;
-        const taxAmount = (taxable * item.gstRate) / 100;
-
-        acc.subtotal += base;
-        acc.discount += discountAmount;
-        acc.tax += taxAmount;
-        acc.total += taxable + taxAmount;
-
-        return acc;
+    const t = items.reduce(
+      (acc, i) => {
+        const base = i.price * i.quantity;
+        const disc = (base * i.discount) / 100;
+        const tax = ((base - disc) * i.gstRate) / 100;
+        return {
+          sub: acc.sub + base,
+          disc: acc.disc + disc,
+          tax: acc.tax + tax,
+          total: acc.total + (base - disc + tax),
+        };
       },
-      { subtotal: 0, discount: 0, tax: 0, total: 0 },
+      { sub: 0, disc: 0, tax: 0, total: 0 },
     );
-  }, [items]);
+
+    const overallDiscAmount = (t.total * overallDiscount) / 100;
+    return { ...t, overallDiscAmount, final: t.total - overallDiscAmount };
+  }, [items, overallDiscount]);
 
   const handleSubmit = async () => {
-    // Run Validation
-    const { isValid, errors: validationErrors } = validateInvoiceForm(
-      customer,
-      items,
-    );
-    setErrors(validationErrors);
-
-    if (!isValid) {
-      return;
-    }
+    const { isValid, errors: errs } = validateInvoiceForm(customer, items);
+    setErrors(errs);
+    if (!isValid) return;
 
     setIsGenerating(true);
     try {
-      let res;
+      const payload = { customer, items, date, overallDiscount };
+      const res = isEditing
+        ? await api.put(`/invoices/${id}`, payload)
+        : await api.post('/invoices/create', payload);
 
-      if (isEditing) {
-        res = await api.put(`/invoices/${id}`, { customer, items, date });
-      } else {
-        res = await api.post('/invoices/create', { customer, items, date });
-      }
       setGeneratedInvoice(res.data);
       setIsSuccess(true);
     } catch (err) {
-      if (err.response?.data?.code === 'SUBSCRIPTION_REQUIRED') {
+      if (err.response?.data?.code === 'SUBSCRIPTION_REQUIRED')
         setSubscriptionRequired(true);
-        return;
-      }
-      const msg = err.response?.data?.message || err.message || 'Unknown error';
-      alert(`Error: ${msg}`);
-      console.error('Error handling invoice', err);
+      else alert(err.message || 'Error creating invoice');
     } finally {
       setIsGenerating(false);
     }
   };
 
-  const resetForm = () => {
-    if (isEditing) {
-      navigate('/'); // Go back to create mode
-      return;
-    }
-    setCustomer({ name: '', phone: '', address: '' });
-    setItems([{ name: '', quantity: 1, price: 0, gstRate: 18, discount: 0 }]);
-    setIsSuccess(false);
-    setGeneratedInvoice(null);
-    setSearchQuery('');
-  };
-
-  // --- Success View ---
-  /* Success View Logic Moved to Dialog at bottom */
-
-  if (loading) {
+  if (loading)
     return (
-      <div className="flex bg-muted/20 items-center justify-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      <div className="h-screen flex items-center justify-center">
+        <Loader2 className="animate-spin text-primary" />
       </div>
     );
-  }
 
-  // --- Main Dashboard View ---
   return (
-    <div className="max-w-6xl mx-auto space-y-8 pb-20 pt-8">
-      {/* Invoice Generator Section */}
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
+    <div className="min-h-screen bg-muted/10 pb-20">
+      {/* --- Sticky Header --- */}
+      <div className="sticky top-0 z-30 bg-background/80 backdrop-blur-md border-b px-4 py-3 flex items-center justify-between shadow-sm">
+        <div className="flex items-center gap-3">
           <div>
-            <h2 className="text-2xl font-bold tracking-tight">
-              {isEditing ? 'Edit Invoice' : 'Create Invoice'}
-            </h2>
-            <p className="text-muted-foreground">
-              {isEditing
-                ? 'Modify invoice details below.'
-                : 'Enter customer and item details to generate a PDF.'}
+            <h1 className="text-lg font-bold leading-tight">
+              {isEditing ? 'Edit Invoice' : 'New Invoice'}
+            </h1>
+            <p className="text-xs text-muted-foreground hidden sm:block">
+              Fill details below to generate PDF
             </p>
           </div>
+        </div>
+        <div className="flex gap-2">
           <Button
-            size="lg"
+            variant="secondary"
+            onClick={() => navigate(0)}
+            className="hidden sm:flex"
+          >
+            Reset
+          </Button>
+          <Button
             onClick={handleSubmit}
             disabled={isGenerating}
-            className="min-w-45 shadow-sm font-semibold"
+            className="min-w-35 shadow-md font-semibold bg-blue-600 hover:bg-blue-700 text-white"
           >
             {isGenerating ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                <span className="ml-2">
-                  {isEditing ? 'Updating...' : 'Generating...'}
-                </span>
-              </>
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
             ) : (
-              <>
-                <FileText className="mr-2 h-4 w-4" />
-                <span className="ml-2">
-                  {isEditing ? 'Update Invoice' : 'Generate Invoice'}
-                </span>
-              </>
+              <Zap className="h-4 w-4 mr-2 fill-current" />
             )}
+            {isEditing ? 'Save Changes' : 'Generate Now'}
           </Button>
         </div>
+      </div>
 
-        <div className="grid md:grid-cols-3 gap-6">
-          {/* Left: Customer Details */}
-          <div className="md:col-span-1 space-y-6">
-            <Card className="h-full border-0 shadow-lg rounded-xl overflow-hidden">
-              <CardHeader className=" pt-4 border-b">
-                <CardTitle className="text-sm font-bold text-blue-700 uppercase tracking-wide">
-                  Customer Info
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3 pt-4 px-4">
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-bold uppercase flex justify-between tracking-wider">
-                    Invoice Date
-                  </label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant={'outline'}
+      <div className="max-w-5xl mx-auto mt-6 px-4 sm:px-6">
+        {/* --- Main Paper Sheet --- */}
+        <Card className="border shadow-md bg-card">
+          <CardContent className="p-6 sm:p-8 space-y-8">
+            {/* 1. Customer & Date Section */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {/* Left: Bill To */}
+              <div className="space-y-4">
+                <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground border-b pb-1">
+                  Bill To
+                </h3>
+
+                <div className="grid gap-3">
+                  {/* Phone with Search */}
+                  <div className="relative group">
+                    <label className="text-[10px] uppercase font-bold text-muted-foreground">
+                      Phone
+                    </label>
+                    <div className="relative">
+                      <Input
+                        value={customer.phone}
+                        onChange={(e) => handleCustomerPhone(e.target.value)}
+                        placeholder="Customer Phone (Search...)"
                         className={cn(
-                          'w-full justify-start text-left font-normal',
-                          !date && 'text-muted-foreground',
+                          'bg-muted/30 font-mono',
+                          errors.customerPhone && 'border-red-500',
                         )}
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {date ? format(date, 'PPP') : <span>Pick a date</span>}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={date}
-                        onSelect={setDate}
-                        initialFocus
                       />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-                <div className="space-y-2 relative">
-                  <label className="text-xs font-semibold uppercase text-muted-foreground flex justify-between">
-                    Phone Number
+                      <Search className="absolute right-3 top-2.5 h-4 w-4 text-muted-foreground opacity-50" />
+                    </div>
+                    {/* Search Dropdown */}
+                    {showResults && searchResults.length > 0 && (
+                      <div className="absolute z-50 w-full bg-popover border rounded-md shadow-xl mt-1 max-h-40 overflow-y-auto">
+                        {searchResults.map((res) => (
+                          <div
+                            key={res._id}
+                            className="p-2 hover:bg-muted cursor-pointer text-sm"
+                            onClick={() => {
+                              setCustomer({
+                                name: res.name,
+                                phone: res.phone,
+                                address: res.address || '',
+                              });
+                              setShowResults(false);
+                            }}
+                          >
+                            <div className="font-bold">{res.name}</div>
+                            <div className="text-xs text-muted-foreground">
+                              {res.phone}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                     {errors.customerPhone && (
-                      <span className="text-red-500 font-normal normal-case">
+                      <span className="text-xs text-red-500">
                         {errors.customerPhone}
                       </span>
                     )}
-                  </label>
-                  <div className="relative">
+                  </div>
+
+                  {/* Name */}
+                  <div>
+                    <label className="text-[10px] uppercase font-bold text-muted-foreground">
+                      Name
+                    </label>
                     <Input
-                      placeholder="Search or enter phone..."
-                      value={customer.phone}
-                      maxLength={10} // Enforce 10 chars max
+                      value={customer.name}
                       onChange={(e) => {
-                        const val = e.target.value.replace(/\D/g, ''); // Only allow numbers
-                        if (val.length <= 10) {
-                          handleSearchChange(val);
-                          if (errors.customerPhone)
-                            setErrors({ ...errors, customerPhone: null });
-                        }
+                        setCustomer({ ...customer, name: e.target.value });
+                        if (errors.customerName)
+                          setErrors({ ...errors, customerName: null });
                       }}
-                      className={`pr-8 font-mono ${errors.customerPhone ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
+                      placeholder="Customer Name"
+                      className={cn(
+                        'bg-muted/30 font-medium',
+                        errors.customerName && 'border-red-500',
+                      )}
                     />
-                    <Search className="absolute right-2.5 top-2.5 h-4 w-4 text-muted-foreground opacity-50" />
                   </div>
 
-                  {showResults && searchResults.length > 0 && (
-                    <div className="absolute z-50 w-full border rounded-md shadow-xl mt-1 max-h-48 overflow-y-auto">
-                      {searchResults.map((res) => (
-                        <div
-                          key={res._id}
-                          className="px-3 py-2 cursor-pointer text-sm border-b last:border-0"
-                          onClick={() => selectCustomer(res)}
-                        >
-                          <div className="font-medium">{res.name}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {res.phone}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-semibold uppercase text-muted-foreground flex justify-between">
-                    Full Name
-                    {errors.customerName && (
-                      <span className="text-red-500 font-normal normal-case">
-                        {errors.customerName}
-                      </span>
-                    )}
-                  </label>
-                  <Input
-                    value={customer.name}
-                    onChange={(e) => {
-                      setCustomer({ ...customer, name: e.target.value });
-                      if (errors.customerName)
-                        setErrors({ ...errors, customerName: null });
-                    }}
-                    placeholder="Customer Name"
-                    className={
-                      errors.customerName
-                        ? 'border-red-500 focus-visible:ring-red-500'
-                        : ''
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-semibold uppercase text-muted-foreground flex justify-between">
-                    Address
-                    {errors.customerAddress && (
-                      <span className="text-red-500 font-normal normal-case">
-                        {errors.customerAddress}
-                      </span>
-                    )}
-                  </label>
-                  <Input
-                    value={customer.address}
-                    onChange={(e) =>
-                      setCustomer({ ...customer, address: e.target.value })
-                    }
-                    placeholder="Billing Address"
-                    className={
-                      errors.customerAddress
-                        ? 'border-red-500 focus-visible:ring-red-500'
-                        : ''
-                    }
-                  />
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Right: Items Table */}
-          <div className="md:col-span-2">
-            <Card className="h-full border-0 shadow-lg rounded-xl overflow-hidden">
-              <CardHeader className="pb-3 pt-4 border-b flex flex-row items-center justify-between">
-                <CardTitle className="text-sm font-bold uppercase tracking-wide">
-                  Items List
-                </CardTitle>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={addItem}
-                  className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 h-8 px-3 text-xs font-semibold"
-                >
-                  <Plus className="h-3.5 w-3.5 mr-1.5" /> Add Item
-                </Button>
-              </CardHeader>
-              <CardContent className="p-0">
-                {/* Desktop Header */}
-                <div className="hidden md:grid font-semibold text-[10px] uppercase tracking-widest grid-cols-12 gap-2 px-4 py-2 border-b">
-                  <div className="col-span-5">Items</div>
-                  <div className="col-span-1 text-center">Qty</div>
-                  <div className="col-span-2 text-right">Price</div>
-                  <div className="col-span-1 text-center">Tax</div>
-                  <div className="col-span-1 text-center">Disc</div>
-                  {/*want to move total to little right */}
-                  <div className="col-span-2 text-right">Total</div>
-                </div>
-
-                <div className="max-h-100 overflow-y-auto p-4 md:p-0">
-                  {items.map((item, index) => {
-                    const base = item.price * item.quantity;
-                    const discount = (base * item.discount) / 100;
-                    const tax = ((base - discount) * item.gstRate) / 100;
-                    const rowTotal = base - discount + tax;
-
-                    return (
-                      <div
-                        key={index}
-                        className="group relative flex flex-col md:grid md:grid-cols-12 gap-4 md:gap-2 p-4 md:p-2 border rounded-lg md:rounded-none md:border-b last:border-0 items-start md:items-center bg-card shadow-sm md:shadow-none mb-4 md:mb-0"
-                      >
-                        {/* Mobile Delete Button */}
-                        <button
-                          onClick={() => removeItem(index)}
-                          className="absolute top-2 right-2 md:hidden text-red-500 p-2"
-                          disabled={items.length === 1}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-
-                        <div className="w-full md:col-span-5 space-y-1 relative">
-                          <label className="text-xs text-muted-foreground md:hidden">
-                            Item Name
-                          </label>
-                          <Input
-                            list={`items-list-${index}`}
-                            placeholder="Item name"
-                            className={`h-9 md:h-8 text-sm ${errors[`item_${index}_name`] ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
-                            value={item.name}
-                            onChange={(e) => {
-                              updateItem(index, 'name', e.target.value);
-                              if (errors[`item_${index}_name`]) {
-                                const newErrors = { ...errors };
-                                delete newErrors[`item_${index}_name`];
-                                setErrors(newErrors);
-                              }
-                            }}
-                          />
-                          {/* Inline Error Icon for Desktop */}
-                          {errors[`item_${index}_name`] && (
-                            <div
-                              className="absolute right-2 top-2 text-red-500 pointer-events-none hidden md:block"
-                              title={errors[`item_${index}_name`]}
-                            >
-                              <AlertCircle className="h-4 w-4" />
-                            </div>
-                          )}
-                          <datalist id={`items-list-${index}`}>
-                            {inventory.map((inv) => (
-                              <option key={inv._id} value={inv.name} />
-                            ))}
-                          </datalist>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4 w-full md:contents">
-                          <div className="md:col-span-1 relative">
-                            <label className="text-xs text-muted-foreground md:hidden block mb-1">
-                              Qty
-                            </label>
-                            <Input
-                              className={`h-9 md:h-8 text-center px-1 ${errors[`item_${index}_quantity`] ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
-                              type="number"
-                              min={1}
-                              value={item.quantity}
-                              onChange={(e) =>
-                                updateItem(
-                                  index,
-                                  'quantity',
-                                  Number(e.target.value),
-                                )
-                              }
-                              onBlur={(e) => {
-                                if (
-                                  !e.target.value ||
-                                  Number(e.target.value) < 1
-                                ) {
-                                  updateItem(index, 'quantity', 1);
-                                }
-                              }}
-                            />
-                          </div>
-                          <div className="md:col-span-2 relative">
-                            <label className="text-xs text-muted-foreground md:hidden block mb-1">
-                              Price
-                            </label>
-                            <Input
-                              className={`h-9 md:h-8 text-right px-1 ${errors[`item_${index}_price`] ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
-                              type="number"
-                              min={0}
-                              value={item.price}
-                              onChange={(e) =>
-                                updateItem(
-                                  index,
-                                  'price',
-                                  Number(e.target.value),
-                                )
-                              }
-                            />
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4 w-full md:contents">
-                          <div className="md:col-span-1">
-                            <label className="text-xs text-muted-foreground md:hidden block mb-1">
-                              Tax %
-                            </label>
-                            <Input
-                              className="h-9 md:h-8 text-center px-1 text-xs"
-                              type="number"
-                              value={item.gstRate}
-                              onChange={(e) =>
-                                updateItem(
-                                  index,
-                                  'gstRate',
-                                  Number(e.target.value),
-                                )
-                              }
-                            />
-                          </div>
-                          <div className="md:col-span-1">
-                            <label className="text-xs text-muted-foreground md:hidden block mb-1">
-                              Disc %
-                            </label>
-                            <Input
-                              className="h-9 md:h-8 text-center px-1 text-xs"
-                              type="number"
-                              value={item.discount}
-                              onChange={(e) =>
-                                updateItem(
-                                  index,
-                                  'discount',
-                                  Number(e.target.value),
-                                )
-                              }
-                            />
-                          </div>
-                        </div>
-
-                        <div className="w-full md:col-span-2 flex items-center justify-between md:justify-end gap-2 mt-2 md:mt-0 pt-2 md:pt-0 border-t md:border-0 border-dashed">
-                          <span className="text-sm font-medium md:hidden text-muted-foreground">
-                            Total:
-                          </span>
-                          <span className="font-mono font-bold text-sm">
-                            ₹{rowTotal.toFixed(0)}
-                          </span>
-                          <button
-                            onClick={() => removeItem(index)}
-                            className="hidden md:block text-red-400 hover:text-red-600 p-1 rounded-md hover:bg-red-50"
-                            disabled={items.length === 1}
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </CardContent>
-
-              {/* Totals Section */}
-              <div className="p-4 border-t">
-                <div className="flex flex-col items-end space-y-1">
-                  <div className="flex justify-between w-56 text-xs font-medium">
-                    <span>Subtotal</span>
-                    <span>₹{totals.subtotal.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between w-56 text-xs text-green-600 font-medium">
-                    <span>Discount</span>
-                    <span>- ₹{totals.discount.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between w-56 text-xs font-medium">
-                    <span>Tax (GST)</span>
-                    <span>+ ₹{totals.tax.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between w-56 font-bold text-base pt-2 border-t mt-2">
-                    <span>Total</span>
-                    <span>₹{totals.total.toFixed(2)}</span>
+                  {/* Address */}
+                  <div>
+                    <label className="text-[10px] uppercase font-bold text-muted-foreground">
+                      Billing Address
+                    </label>
+                    <Input
+                      value={customer.address}
+                      onChange={(e) =>
+                        setCustomer({ ...customer, address: e.target.value })
+                      }
+                      placeholder="Street Address, City"
+                      className="bg-muted/30"
+                    />
                   </div>
                 </div>
               </div>
-            </Card>
-          </div>
-        </div>
+
+              {/* Right: Invoice Details */}
+              <div className="space-y-4">
+                <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground border-b pb-1 text-right md:text-left">
+                  Invoice Details
+                </h3>
+                <div className="grid gap-3">
+                  <div>
+                    <label className="text-[10px] uppercase font-bold text-muted-foreground">
+                      Date Issued
+                    </label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            'w-full justify-start text-left font-normal bg-muted/30',
+                            !date && 'text-muted-foreground',
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {date ? (
+                            format(date, 'PPP')
+                          ) : (
+                            <span>Pick a date</span>
+                          )}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0">
+                        <Calendar
+                          mode="single"
+                          selected={date}
+                          onSelect={setDate}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* 2. Items Table Section */}
+            <div className="space-y-4">
+              {/* Header Row */}
+              <div className="hidden md:grid grid-cols-12 gap-3 text-[10px] uppercase font-bold text-muted-foreground px-4 bg-muted/40 py-2 rounded-t-lg border-b">
+                <div className="col-span-12 md:col-span-5">Item Details</div>
+                <div className="col-span-1 text-center">Qty</div>
+                <div className="col-span-2 text-right">Price</div>
+                <div className="col-span-1 text-center">Tax %</div>
+                <div className="col-span-1 text-center">Disc %</div>
+                <div className="col-span-2 text-right">Total</div>
+              </div>
+
+              {/* Rows */}
+              {/* Rows */}
+              <div className="space-y-3">
+                {items.map((item, i) => {
+                  const rowTotal =
+                    item.price * item.quantity -
+                    (item.price * item.quantity * item.discount) / 100 +
+                    ((item.price * item.quantity -
+                      (item.price * item.quantity * item.discount) / 100) *
+                      item.gstRate) /
+                      100;
+
+                  return (
+                    <div
+                      key={item.id || i}
+                      className="group relative grid grid-cols-1 md:grid-cols-12 gap-4 p-4 rounded-xl border bg-card hover:border-primary/50 hover:shadow-sm transition-all items-start animate-in fade-in zoom-in-95 duration-200"
+                    >
+                      {/* Delete Button (Mobile) */}
+                      <div className="md:hidden absolute top-3 right-3">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            if (items.length > 1)
+                              setItems(items.filter((_, idx) => idx !== i));
+                          }}
+                          className="h-8 w-8 text-muted-foreground hover:text-red-500"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+
+                      {/* Item Details (Name + Desc) */}
+                      <div className="md:col-span-5 space-y-2">
+                        <label className="md:hidden text-[10px] font-bold text-muted-foreground">
+                          ITEM
+                        </label>
+                        <Input
+                          ref={(el) => (itemNameRefs.current[i] = el)}
+                          list={`list-${i}`}
+                          value={item.name}
+                          onChange={(e) =>
+                            updateItem(i, 'name', e.target.value)
+                          }
+                          placeholder="Item Name"
+                          className={cn(
+                            'font-bold border-transparent hover:border-input focus:border-primary bg-muted/20 focus:bg-background px-3 transition-all',
+                            errors[`item_${i}_name`] &&
+                              'border-red-500 bg-red-50',
+                          )}
+                        />
+                        <Input
+                          value={item.description}
+                          onChange={(e) =>
+                            updateItem(i, 'description', e.target.value)
+                          }
+                          placeholder="Description (optional)"
+                          className="h-8 text-xs text-muted-foreground border-transparent hover:border-input focus:border-primary bg-transparent px-3"
+                        />
+                        <datalist id={`list-${i}`}>
+                          {inventory.map((x) => (
+                            <option key={x._id} value={x.name} />
+                          ))}
+                        </datalist>
+                      </div>
+
+                      {/* Qty */}
+                      <div className="flex flex-col md:col-span-1">
+                        <label className="md:hidden text-[10px] font-bold text-muted-foreground">
+                          QTY
+                        </label>
+                        <Input
+                          type="number"
+                          min="1"
+                          className="text-center bg-muted/20 focus:bg-background [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                          value={item.quantity}
+                          onChange={(e) =>
+                            updateItem(i, 'quantity', Number(e.target.value))
+                          }
+                          onFocus={(e) => e.target.select()}
+                        />
+                      </div>
+
+                      {/* Price */}
+                      <div className="flex flex-col md:col-span-2">
+                        <label className="md:hidden text-[10px] font-bold text-muted-foreground">
+                          PRICE
+                        </label>
+                        <div className="relative">
+                          <span className="hidden md:block absolute left-2 top-2 text-xs text-muted-foreground">
+                            ₹
+                          </span>
+                          <Input
+                            type="number"
+                            min="0"
+                            className="text-right md:pl-6 bg-muted/20 focus:bg-background [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            value={item.price}
+                            onChange={(e) =>
+                              updateItem(i, 'price', Number(e.target.value))
+                            }
+                            onKeyDown={(e) => handleKeyDown(e, i)}
+                            onFocus={(e) => e.target.select()}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Tax/Disc */}
+                      <div className="flex gap-2 md:contents">
+                        <div className="flex-1 md:col-span-1">
+                          <label className="md:hidden text-[10px] font-bold text-muted-foreground">
+                            TAX %
+                          </label>
+                          <Input
+                            type="number"
+                            className="text-center text-xs bg-muted/20 focus:bg-background [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            value={item.gstRate}
+                            onChange={(e) =>
+                              updateItem(i, 'gstRate', Number(e.target.value))
+                            }
+                            onFocus={(e) => e.target.select()}
+                          />
+                        </div>
+                        <div className="flex-1 md:col-span-1">
+                          <label className="md:hidden text-[10px] font-bold text-muted-foreground">
+                            DISC %
+                          </label>
+                          <Input
+                            type="number"
+                            className="text-center text-xs bg-muted/20 focus:bg-background [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            value={item.discount}
+                            onChange={(e) =>
+                              updateItem(i, 'discount', Number(e.target.value))
+                            }
+                            onKeyDown={(e) => handleKeyDown(e, i)}
+                            onFocus={(e) => e.target.select()}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Total & Delete */}
+                      <div className="md:col-span-2 flex items-center justify-between md:justify-end gap-2 pt-2 md:pt-0 border-t md:border-0 border-dashed">
+                        <span className="md:hidden font-bold text-sm">
+                          Total
+                        </span>
+                        <div className="font-mono font-bold text-sm">
+                          ₹{rowTotal.toFixed(2)}
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            if (items.length > 1)
+                              setItems(items.filter((_, idx) => idx !== i));
+                          }}
+                          className="hidden md:flex h-8 w-8 text-muted-foreground hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Quick Add Bar */}
+              <Button
+                variant="outline"
+                onClick={addItem}
+                className="w-full border-dashed py-8 text-muted-foreground hover:text-primary hover:border-primary/50 hover:bg-muted/50 transition-all font-medium mt-4"
+              >
+                <Plus className="mr-2 h-4 w-4" /> Add Another Item (or press
+                Enter on last item)
+              </Button>
+            </div>
+
+            {/* 3. Totals Section */}
+            <div className="flex flex-col md:flex-row justify-end pt-4">
+              <div className="w-full md:w-1/2 lg:w-1/3 space-y-3 bg-muted/20 p-4 rounded-lg">
+                <div className="flex justify-between text-xs">
+                  <span>Subtotal</span>
+                  <span className="font-mono">₹{totals.sub.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-xs text-green-600">
+                  <span>Discount</span>
+                  <span className="font-mono">- ₹{totals.disc.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-xs">
+                  <span>GST Output</span>
+                  <span className="font-mono">₹{totals.tax.toFixed(2)}</span>
+                </div>
+
+                <div className="flex items-center justify-between pt-2 border-t border-dashed">
+                  <span className="text-xs font-semibold">
+                    Overall Discount (%)
+                  </span>
+                  <Input
+                    type="number"
+                    min="0"
+                    max="100"
+                    className="h-7 w-16 text-right text-xs bg-background [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    value={overallDiscount}
+                    onChange={(e) => setOverallDiscount(Number(e.target.value))}
+                    onFocus={(e) => e.target.select()}
+                  />
+                </div>
+                {totals.overallDiscAmount > 0 && (
+                  <div className="flex justify-between text-xs text-green-600 font-bold">
+                    <span>Extra Off</span>
+                    <span>- ₹{totals.overallDiscAmount.toFixed(2)}</span>
+                  </div>
+                )}
+
+                <div className="flex justify-between text-lg font-bold border-t pt-2 mt-2">
+                  <span>Total</span>
+                  <span className="text-blue-700">
+                    ₹{totals.final.toFixed(2)}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Success Dialog */}
+      {/* Success Modal */}
       <Dialog open={isSuccess} onOpenChange={setIsSuccess}>
         <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Success</DialogTitle>
+          <DialogHeader className="items-center text-center">
+            <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mb-3">
+              <Check className="h-6 w-6 text-green-600" />
+            </div>
+            <DialogTitle>Invoice Generated!</DialogTitle>
             <DialogDescription>
-              Invoice{' '}
-              <span className="font-mono font-medium">
-                #{generatedInvoice?.invoiceNumber}
-              </span>{' '}
-              created successfully.
+              Invoice <b>#{generatedInvoice?.invoiceNumber}</b> is ready.
             </DialogDescription>
           </DialogHeader>
-
-          <div className="space-y-4 py-2">
+          <div className="flex gap-2 mt-4">
+            <Input
+              readOnly
+              value={
+                generatedInvoice
+                  ? `${window.location.origin}/share/${generatedInvoice._id}/${generatedInvoice.businessId}`
+                  : ''
+              }
+              className="text-xs font-mono bg-muted"
+            />
             <Button
-              variant="default"
-              className="w-full bg-blue-600 hover:bg-blue-700"
+              size="icon"
+              variant="outline"
               onClick={() => {
-                const shareUrl = `${window.location.origin}/share/${generatedInvoice?._id}/${generatedInvoice?.businessId?._id || generatedInvoice?.businessId}`;
-                window.open(shareUrl, '_blank');
+                navigator.clipboard.writeText(
+                  `${window.location.origin}/share/${generatedInvoice._id}/${generatedInvoice.businessId}`,
+                );
+                setCopied(true);
+                setTimeout(() => setCopied(false), 2000);
               }}
             >
-              <ExternalLink className="w-4 h-4 mr-2" />
+              {copied ? (
+                <Check className="h-4 w-4 text-green-600" />
+              ) : (
+                <Copy className="h-4 w-4" />
+              )}
+            </Button>
+          </div>
+          <div className="grid grid-cols-2 gap-2 mt-4">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsSuccess(false);
+                if (!isEditing) {
+                  setCustomer({ name: '', phone: '', address: '' });
+                  setItems([
+                    {
+                      name: '',
+                      quantity: 1,
+                      price: 0,
+                      gstRate: 18,
+                      discount: 0,
+                    },
+                  ]);
+                  setGeneratedInvoice(null);
+                }
+              }}
+            >
+              New Invoice
+            </Button>
+            <Button
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+              onClick={() =>
+                window.open(
+                  `${window.location.origin}/share/${generatedInvoice._id}/${generatedInvoice.businessId}`,
+                  '_blank',
+                )
+              }
+            >
               View PDF
             </Button>
-
-            <div className="flex items-center space-x-2">
-              <Input
-                readOnly
-                value={
-                  generatedInvoice
-                    ? `${window.location.origin}/share/${generatedInvoice._id}/${generatedInvoice.businessId?._id || generatedInvoice.businessId}`
-                    : ''
-                }
-                className="flex-1 font-mono text-xs h-9 bg-muted/50"
-              />
-              <Button
-                size="sm"
-                variant="outline"
-                className="shrink-0 h-9 w-9 p-0"
-                onClick={() => {
-                  const shareUrl = `${window.location.origin}/share/${generatedInvoice?._id}/${generatedInvoice?.businessId?._id || generatedInvoice?.businessId}`;
-                  navigator.clipboard.writeText(shareUrl);
-                  setCopied(true);
-                  setTimeout(() => setCopied(false), 2000);
-                }}
-              >
-                {copied ? (
-                  <Check className="h-4 w-4 text-green-600" />
-                ) : (
-                  <Copy className="h-4 w-4" />
-                )}
-              </Button>
-            </div>
-
-            <div className="flex justify-between gap-3 pt-2">
-              <Button
-                variant="ghost"
-                className="flex-1"
-                onClick={() => setIsSuccess(false)}
-              >
-                Close
-              </Button>
-              <Button variant="outline" className="flex-1" onClick={resetForm}>
-                Create New
-              </Button>
-            </div>
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Subscription Required Dialog */}
+      {/* Subscription Required Modal */}
       <Dialog
         open={subscriptionRequired}
         onOpenChange={setSubscriptionRequired}
       >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="text-red-600">
-              Subscription Required
-            </DialogTitle>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader className="items-center text-center">
+            <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center mb-3">
+              <Zap className="h-6 w-6 text-amber-600" />
+            </div>
+            <DialogTitle>Subscription Required</DialogTitle>
             <DialogDescription>
-              Your subscription plan has expired or is inactive. To create new
-              invoices, please purchase a subscription plan.
+              Your business subscription has expired or is inactive. You need an
+              active plan to create new invoices.
             </DialogDescription>
           </DialogHeader>
-          <div className="flex justify-end gap-3 mt-4">
+          <div className="flex justify-end gap-2 mt-4 w-full">
             <Button
               variant="outline"
               onClick={() => setSubscriptionRequired(false)}
+              className="w-full"
             >
-              Cancel
+              Later
             </Button>
-            <Button onClick={() => navigate('/subscription')}>
-              View Plans
+            <Button
+              className="bg-amber-600 hover:bg-amber-700 text-white w-full"
+              onClick={() => navigate('/subscription')}
+            >
+              Update Plan
             </Button>
           </div>
         </DialogContent>

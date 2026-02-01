@@ -15,6 +15,7 @@ const customerRoutes = require('./routes/customerRoutes');
 const queryRoutes = require('./routes/queryRoutes');
 const subscriptionRoutes = require('./routes/subscriptionRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
+const proxyRoutes = require('./routes/proxyRoutes');
 
 const app = express();
 
@@ -42,6 +43,7 @@ app.use('/api/invoices', invoiceRoutes);
 app.use('/api/queries', queryRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/proxy', proxyRoutes);
 
 // Error Handling Middleware
 app.use((err, req, res, next) => {

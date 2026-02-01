@@ -17,8 +17,8 @@ export function Sidebar({ isCollapsed, toggleSidebar, navItems }) {
   return (
     <aside
       className={cn(
-        'hidden md:flex flex-col border-r bg-card h-screen sticky top-0 transition-all duration-300',
-        isCollapsed ? 'w-16' : 'w-64'
+        'hidden md:flex flex-col border-r bg-card h-screen sticky top-0 ',
+        isCollapsed ? 'w-16' : 'w-64',
       )}
     >
       {/* Header */}
@@ -31,7 +31,10 @@ export function Sidebar({ isCollapsed, toggleSidebar, navItems }) {
         <Button
           variant="ghost"
           size="icon"
-          className={cn('text-muted-foreground hover:text-foreground h-8 w-8', isCollapsed ? 'mx-auto' : 'ml-auto')}
+          className={cn(
+            'text-muted-foreground hover:text-foreground h-8 w-8',
+            isCollapsed ? 'mx-auto' : 'ml-auto',
+          )}
           onClick={toggleSidebar}
         >
           <SidebarIcon className="h-4 w-4" />
@@ -43,17 +46,21 @@ export function Sidebar({ isCollapsed, toggleSidebar, navItems }) {
         {navItems.map((item) => {
           const navLinkStyle = ({ isActive }) =>
             cn(
-              'flex items-center gap-3 rounded-md transition-colors duration-200',
+              'flex items-center gap-3 rounded-md ',
               isCollapsed ? 'justify-center p-2' : 'px-3 py-2',
               isActive
                 ? 'bg-primary text-primary-foreground'
-                : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                : 'text-muted-foreground hover:bg-muted hover:text-foreground',
             );
 
           const content = (
             <>
               {item.icon}
-              {!isCollapsed && <span className="font-medium text-sm truncate">{item.label}</span>}
+              {!isCollapsed && (
+                <span className="font-medium text-sm truncate">
+                  {item.label}
+                </span>
+              )}
             </>
           );
 
@@ -63,9 +70,9 @@ export function Sidebar({ isCollapsed, toggleSidebar, navItems }) {
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <NavLink to={item.to} className={navLinkStyle}>
-                       <span className="flex items-center justify-center">
-                         {item.icon}
-                       </span>
+                      <span className="flex items-center justify-center">
+                        {item.icon}
+                      </span>
                     </NavLink>
                   </TooltipTrigger>
                   <TooltipContent side="right" className="font-medium">
@@ -127,16 +134,21 @@ export function MobileSidebar({ isOpen, setIsOpen, navItems }) {
   return (
     <div className="fixed inset-0 z-50 md:hidden font-sans">
       <div
-        className="absolute inset-0 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200"
+        className="absolute inset-0 bg-background/80 backdrop-blur-sm animate-in fade-in"
         onClick={() => setIsOpen(false)}
       />
 
-      <div className="absolute left-0 top-0 bottom-0 w-64 bg-card border-r shadow-xl animate-in slide-in-from-left duration-300 flex flex-col">
+      <div className="absolute left-0 top-0 bottom-0 w-64 bg-card border-r shadow-xl animate-in slide-in-from-left flex flex-col">
         <div className="h-16 flex items-center justify-between px-6 border-b shrink-0">
           <span className="font-semibold text-lg tracking-tight text-foreground">
             {user?.role === 'super_admin' ? 'Super Admin' : 'Invoice App'}
           </span>
-          <Button variant="ghost" size="icon" onClick={() => setIsOpen(false)} className="-mr-2 text-muted-foreground">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setIsOpen(false)}
+            className="-mr-2 text-muted-foreground"
+          >
             <X className="h-5 w-5" />
           </Button>
         </div>
@@ -149,10 +161,10 @@ export function MobileSidebar({ isOpen, setIsOpen, navItems }) {
               onClick={() => setIsOpen(false)}
               className={({ isActive }) =>
                 cn(
-                  'flex items-center gap-3 px-3 py-2 rounded-md transition-colors font-medium text-sm',
+                  'flex items-center gap-3 px-3  py-2 rounded-md transition-colors font-medium text-sm',
                   isActive
                     ? 'bg-primary text-primary-foreground'
-                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground',
                 )
               }
             >

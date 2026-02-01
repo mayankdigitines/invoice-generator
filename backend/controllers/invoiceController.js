@@ -6,7 +6,7 @@ const { Parser } = require('json2csv');
 
 exports.createInvoice = async (req, res, next) => {
   try {
-    const { customer, items, date } = req.body;
+    const { customer, items, date, overallDiscount = 0 } = req.body;
     const businessId = req.user.businessId;
 
     if (!businessId)
@@ -71,6 +71,7 @@ exports.createInvoice = async (req, res, next) => {
 
         return {
           itemName: item.name,
+          itemDescription: item.description || '',
           quantity: item.quantity,
           price: item.price,
           gstRate: item.gstRate,
@@ -80,6 +81,16 @@ exports.createInvoice = async (req, res, next) => {
       }),
     );
 
+    // Apply Overall Discount on the total amount + total tax (or just total amount? usually on subtotal)
+    // Assuming overall discount is a percentage on the Final Total (post tax) or Pre-Tax Total?
+    // Let's apply it on the Grand Total for simplicity unless specified otherwise.
+    // However, usually "Overall Discount" in accounting software is subtotal discount.
+    // If I apply it to grandTotal, the math is: grandTotal = (totalAmount + totalTax) * (1 - overallDiscount/100)
+
+    let grandTotal = totalAmount + totalTax;
+    const overallDiscountAmount = (grandTotal * (overallDiscount || 0)) / 100;
+    grandTotal -= overallDiscountAmount;
+
     // C. Save Invoice
     const newInvoice = new Invoice({
       invoiceNumber: `INV-${Date.now()}`,
@@ -87,9 +98,10 @@ exports.createInvoice = async (req, res, next) => {
       businessId,
       items: processedItems,
       date: date || new Date(),
+      overallDiscount,
       totalAmount,
       taxAmount: totalTax,
-      grandTotal: totalAmount + totalTax,
+      grandTotal,
     });
 
     await newInvoice.save();
@@ -148,7 +160,7 @@ exports.getCustomerInvoices = async (req, res, next) => {
 // 4. Update Invoice (With Items & Customer Handling)
 exports.updateInvoice = async (req, res, next) => {
   try {
-    const { items, customer } = req.body;
+    const { items, customer, overallDiscount } = req.body;
     let updateData = { ...req.body };
 
     // A. Update Customer Info if provided
@@ -168,12 +180,18 @@ exports.updateInvoice = async (req, res, next) => {
       }
     }
 
-    // B. Recalculate totals if items change
-    if (items) {
+    // B. Recalculate totals if items change or overallDiscount changes
+    if (items || overallDiscount !== undefined) {
       let totalAmount = 0;
       let totalTax = 0;
 
-      const processedItems = items.map((item) => {
+      // If items are not provided, we might need to fetch existing ones to recalc,
+      // but usually update sends full payload. Let's assume items are present if recalculation is needed
+      // OR we just use provided items.
+
+      const itemsToProcess = items || []; // Ideally should fetch check if items not passed but mostly FE sends all
+
+      const processedItems = itemsToProcess.map((item) => {
         const baseTotal = item.price * item.quantity;
         const discountAmount = (baseTotal * (item.discount || 0)) / 100;
         const taxableAmount = baseTotal - discountAmount;
@@ -184,6 +202,7 @@ exports.updateInvoice = async (req, res, next) => {
 
         return {
           itemName: item.name, // Ensure strict mapping
+          itemDescription: item.description || '',
           quantity: item.quantity,
           price: item.price,
           gstRate: item.gstRate,
@@ -192,10 +211,27 @@ exports.updateInvoice = async (req, res, next) => {
         };
       });
 
-      updateData.items = processedItems;
-      updateData.totalAmount = totalAmount;
-      updateData.taxAmount = totalTax;
-      updateData.grandTotal = totalAmount + totalTax;
+      if (items) {
+        updateData.items = processedItems;
+      }
+
+      // If items were not passed, we can't easily recalculate without fetching.
+      // Assuming frontend sends items when updating amounts.
+      if (items) {
+        updateData.totalAmount = totalAmount;
+        updateData.taxAmount = totalTax;
+        let grandTotal = totalAmount + totalTax;
+
+        // Use new overallDiscount or existing one?
+        // If overallDiscount is in body, use it. If not, we might lose it if we don't fetch.
+        // Good practice: FE sends everything.
+        const discountToApply =
+          overallDiscount !== undefined ? overallDiscount : 0;
+        updateData.overallDiscount = discountToApply;
+
+        const overallDiscountAmount = (grandTotal * discountToApply) / 100;
+        updateData.grandTotal = grandTotal - overallDiscountAmount;
+      }
     }
 
     const filter = { _id: req.params.id };

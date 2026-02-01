@@ -16,6 +16,7 @@ const invoiceSchema = new mongoose.Schema(
     items: [
       {
         itemName: String,
+        itemDescription: String,
         quantity: Number,
         price: Number,
         gstRate: Number,
@@ -24,6 +25,7 @@ const invoiceSchema = new mongoose.Schema(
       },
     ],
     date: { type: Date, required: true, default: Date.now },
+    overallDiscount: { type: Number, default: 0 },
     totalAmount: Number,
     taxAmount: Number,
     grandTotal: Number,

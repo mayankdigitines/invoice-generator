@@ -1,128 +1,86 @@
+import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-import { ChevronLeft, ChevronRight, LogOut, X } from 'lucide-react';
+import { LogOut, X, Command } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
 
-export function Sidebar({ isCollapsed, toggleSidebar, navItems }) {
+export function Sidebar({ navItems }) {
   const { logout, user } = useAuth();
-  const SidebarIcon = isCollapsed ? ChevronRight : ChevronLeft;
+  const [isHovered, setIsHovered] = useState(false);
 
   return (
-    <aside
-      className={cn(
-        'hidden md:flex flex-col border-r bg-card h-screen sticky top-0 ',
-        isCollapsed ? 'w-16' : 'w-64',
-      )}
-    >
-      {/* Header */}
-      <div className="h-16 flex items-center px-4 border-b shrink-0 bg-card">
-        {!isCollapsed && (
-          <span className="font-semibold text-lg tracking-tight truncate text-foreground">
-            {user?.role === 'super_admin' ? 'Super Admin' : 'Invoice App'}
-          </span>
+    <div className="hidden md:block w-16 h-screen sticky top-0 z-40 bg-background">
+      <aside
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+        className={cn(
+          'flex flex-col h-full bg-card border-r transition-all duration-300 ease-in-out',
+          'absolute top-0 left-0 overflow-hidden z-50',
+          isHovered ? 'w-64 shadow-2xl' : 'w-16 shadow-none'
         )}
-        <Button
-          variant="ghost"
-          size="icon"
-          className={cn(
-            'text-muted-foreground hover:text-foreground h-8 w-8',
-            isCollapsed ? 'mx-auto' : 'ml-auto',
-          )}
-          onClick={toggleSidebar}
-        >
-          <SidebarIcon className="h-4 w-4" />
-        </Button>
-      </div>
+      >
+        <div className="h-16 flex items-center px-4 border-b shrink-0 whitespace-nowrap overflow-hidden">
+          <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary text-primary-foreground shrink-0 shadow-sm">
+             <Command className="h-4 w-4" />
+          </div>
+          <span 
+            className={cn(
+              "font-bold text-lg tracking-tight ml-3 transition-all duration-300",
+              isHovered ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-4"
+            )}
+          >
+             {user?.role === 'super_admin' ? 'Super Admin' : 'Invoice App'}
+          </span>
+        </div>
 
-      {/* Navigation */}
-      <nav className="flex-1 py-4 flex flex-col gap-1 px-2 overflow-y-auto scrollbar-none">
-        {navItems.map((item) => {
-          const navLinkStyle = ({ isActive }) =>
-            cn(
-              'flex items-center gap-3 rounded-md ',
-              isCollapsed ? 'justify-center p-2' : 'px-3 py-2',
-              isActive
-                ? 'bg-primary text-primary-foreground'
-                : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-            );
-
-          const content = (
-            <>
-              {item.icon}
-              {!isCollapsed && (
-                <span className="font-medium text-sm truncate">
-                  {item.label}
-                </span>
-              )}
-            </>
-          );
-
-          if (isCollapsed) {
-            return (
-              <TooltipProvider key={item.to} delayDuration={0}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <NavLink to={item.to} className={navLinkStyle}>
-                      <span className="flex items-center justify-center">
-                        {item.icon}
-                      </span>
-                    </NavLink>
-                  </TooltipTrigger>
-                  <TooltipContent side="right" className="font-medium">
-                    {item.label}
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            );
-          }
-
-          return (
-            <NavLink key={item.to} to={item.to} className={navLinkStyle}>
-              {content}
+        <nav className="flex-1 py-4 flex flex-col gap-1 overflow-y-auto scrollbar-none">
+          {navItems.map((item) => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              onClick={() => setIsHovered(false)}
+              className={({ isActive }) =>
+                cn(
+                  'flex items-center gap-3 px-4 py-3 mx-2 rounded-md transition-all relative overflow-hidden group/item',
+                  isActive
+                    ? 'bg-primary text-primary-foreground shadow-md'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                )
+              }
+            >
+              <div className="shrink-0 flex items-center justify-center w-5">
+                {item.icon}
+              </div>
+              <span 
+                className={cn(
+                  "font-medium text-sm whitespace-nowrap transition-all duration-300 delay-75",
+                   isHovered ? "opacity-100 translate-x-0" : "opacity-0 translate-x-2"
+                )}
+              >
+                {item.label}
+              </span>
             </NavLink>
-          );
-        })}
-      </nav>
+          ))}
+        </nav>
 
-      {/* Footer */}
-      <div className="p-4 border-t shrink-0 bg-card">
-        {isCollapsed ? (
-          <TooltipProvider delayDuration={0}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="w-full text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                  onClick={logout}
-                >
-                  <LogOut className="h-5 w-5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="right" className="font-medium">
-                Logout
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        ) : (
+        <div className="p-4 border-t shrink-0 whitespace-nowrap overflow-hidden">
           <Button
             variant="ghost"
-            className="w-full justify-start gap-3 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+            className="w-full justify-start gap-3 px-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
             onClick={logout}
           >
-            <LogOut className="h-5 w-5" />
-            <span className="font-medium">Logout</span>
+             <LogOut className="h-5 w-5 shrink-0" />
+             <span 
+               className={cn(
+                 "font-medium transition-all duration-300",
+                 isHovered ? "opacity-100 translate-x-0" : "opacity-0 translate-x-2"
+               )}
+             >Logout</span>
           </Button>
-        )}
-      </div>
-    </aside>
+        </div>
+      </aside>
+    </div>
   );
 }
 
@@ -138,11 +96,16 @@ export function MobileSidebar({ isOpen, setIsOpen, navItems }) {
         onClick={() => setIsOpen(false)}
       />
 
-      <div className="absolute left-0 top-0 bottom-0 w-64 bg-card border-r shadow-xl animate-in slide-in-from-left flex flex-col">
+      <div className="absolute left-0 top-0 bottom-0 w-[80%] max-w-[300px] bg-card border-r shadow-2xl animate-in slide-in-from-left flex flex-col">
         <div className="h-16 flex items-center justify-between px-6 border-b shrink-0">
-          <span className="font-semibold text-lg tracking-tight text-foreground">
-            {user?.role === 'super_admin' ? 'Super Admin' : 'Invoice App'}
-          </span>
+          <div className="flex items-center gap-2">
+             <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary text-primary-foreground shrink-0">
+                 <Command className="h-4 w-4" />
+             </div>
+             <span className="font-semibold text-lg tracking-tight text-foreground">
+               {user?.role === 'super_admin' ? 'Super Admin' : 'Invoice App'}
+             </span>
+          </div>
           <Button
             variant="ghost"
             size="icon"
@@ -161,14 +124,14 @@ export function MobileSidebar({ isOpen, setIsOpen, navItems }) {
               onClick={() => setIsOpen(false)}
               className={({ isActive }) =>
                 cn(
-                  'flex items-center gap-3 px-3  py-2 rounded-md transition-colors font-medium text-sm',
+                  'flex items-center gap-3 px-3 py-3 rounded-md transition-colors font-medium text-sm',
                   isActive
-                    ? 'bg-primary text-primary-foreground'
+                    ? 'bg-primary text-primary-foreground shadow-sm'
                     : 'text-muted-foreground hover:bg-muted hover:text-foreground',
                 )
               }
             >
-              {item.icon}
+              <div className="w-5">{item.icon}</div>
               <span>{item.label}</span>
             </NavLink>
           ))}

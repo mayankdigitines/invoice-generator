@@ -96,7 +96,7 @@ export function MobileSidebar({ isOpen, setIsOpen, navItems }) {
         onClick={() => setIsOpen(false)}
       />
 
-      <div className="absolute left-0 top-0 bottom-0 w-[80%] max-w-[300px] bg-card border-r shadow-2xl animate-in slide-in-from-left flex flex-col">
+      <div className="absolute left-0 top-0 bottom-0 w-[80%] max-w-75 bg-card border-r shadow-2xl animate-in slide-in-from-left flex flex-col">
         <div className="h-16 flex items-center justify-between px-6 border-b shrink-0">
           <div className="flex items-center gap-2">
              <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary text-primary-foreground shrink-0">

@@ -58,3 +58,53 @@ export const validateInvoiceForm = (customer, items) => {
     errors
   };
 };
+
+export const validateBusinessForm = (data) => {
+  const errors = {};
+
+  // Name
+  if (!data.name || data.name.trim().length < 2) {
+    errors.name = 'Business name must be at least 2 characters.';
+  }
+
+  // Address
+  if (!data.address || data.address.trim().length < 5) {
+    errors.address = 'Address must be at least 5 characters.';
+  }
+
+  // Email
+  if (data.email && data.email.trim() !== "") {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) {
+      errors.email = 'Invalid email address.';
+    }
+  }
+
+  // Phone
+  if (data.phone && data.phone.trim() !== "") {
+    if (!/^\d{10}$/.test(data.phone)) {
+      errors.phone = 'Phone number must be exactly 10 digits.';
+    }
+  }
+
+  // GST Number
+  if (data.gstNumber && data.gstNumber.trim() !== "") {
+    const gstRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
+    if (!gstRegex.test(data.gstNumber)) {
+      errors.gstNumber = 'Invalid GST Number format.';
+    }
+  }
+
+  // Logo URL
+  if (data.logoUrl && data.logoUrl.trim() !== "") {
+    try {
+      new URL(data.logoUrl);
+    } catch (_) {
+      errors.logoUrl = 'Invalid URL format.';
+    }
+  }
+
+  return {
+    isValid: Object.keys(errors).length === 0,
+    errors
+  };
+};

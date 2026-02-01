@@ -202,7 +202,13 @@ const formatDate = (dateString) => {
   const day = String(date.getDate()).padStart(2, '0');
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const year = date.getFullYear();
-  return `${day}/${month}/${year}`;
+  // const time = date.toTimeString().split(' ')[0]; // HH:MM AM/PM
+  const time = date.toLocaleTimeString('en-IN', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+  });
+  return `${day}/${month}/${year} ${time}`;
 };
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
@@ -214,6 +220,12 @@ const getProxiedLogoUrl = (url) => {
 };
 
 export const InvoicePDF = ({ invoice, business }) => {
+  const isUpdated =
+    invoice.updatedAt &&
+    invoice.createdAt &&
+    new Date(invoice.updatedAt).getTime() >
+      new Date(invoice.createdAt).getTime();
+
   // Pre-calculate line item details to ensure consistency
   // Assuming input: item.price (unit), item.quantity, item.discount (%), item.gstRate (%), item.amount (total)
   const processedItems = invoice.items.map((item) => {
@@ -296,6 +308,9 @@ export const InvoicePDF = ({ invoice, business }) => {
               Invoice #: {invoice.invoiceNumber}
             </Text>
             <Text>Date: {formatDate(invoice.createdAt)}</Text>
+            {isUpdated && (
+              <Text>Updated: {formatDate(invoice.updatedAt)}</Text>
+            )}
           </View>
         </View>
 

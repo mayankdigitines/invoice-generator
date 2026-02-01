@@ -27,12 +27,14 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { Plus, UserPlus, Loader2, Edit, Users, Key, Eye } from 'lucide-react';
+import { validateBusinessForm } from '@/lib/validation';
 
 
 export default function SuperAdminDashboard() {
   const navigate = useNavigate();
   const [businesses, setBusinesses] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [errors, setErrors] = useState({});
 
   // Modals State
   const [isBusinessModalOpen, setIsBusinessModalOpen] = useState(false);
@@ -98,6 +100,7 @@ export default function SuperAdminDashboard() {
       gstNumber: '',
       logoUrl: '',
     });
+    setErrors({});
   };
 
   const resetUserForm = () => {
@@ -108,6 +111,14 @@ export default function SuperAdminDashboard() {
 
   const handleCreateBusiness = async (e) => {
     e.preventDefault();
+
+    const { isValid, errors: validationErrors } = validateBusinessForm(businessForm);
+    if (!isValid) {
+      setErrors(validationErrors);
+      return;
+    }
+    setErrors({});
+
     try {
       await api.post('/business/create', businessForm);
       setIsBusinessModalOpen(false);
@@ -120,6 +131,14 @@ export default function SuperAdminDashboard() {
 
   const handleEditBusiness = async (e) => {
     e.preventDefault();
+
+    const { isValid, errors: validationErrors } = validateBusinessForm(businessForm);
+    if (!isValid) {
+      setErrors(validationErrors);
+      return;
+    }
+    setErrors({});
+
     try {
       await api.put(`/business/${selectedBusiness._id}`, businessForm);
       setIsEditBusinessModalOpen(false);
@@ -169,6 +188,7 @@ export default function SuperAdminDashboard() {
       gstNumber: business.gstNumber || '',
       logoUrl: business.logoUrl || '',
     });
+    setErrors({});
     setIsEditBusinessModalOpen(true);
   };
 
@@ -316,8 +336,10 @@ export default function SuperAdminDashboard() {
                 onChange={(e) =>
                   setBusinessForm({ ...businessForm, name: e.target.value })
                 }
+                className={errors.name ? "border-red-500 focus-visible:ring-red-500" : ""}
                 required
               />
+              {errors.name && <p className="text-sm text-red-500">{errors.name}</p>}
             </div>
             <div className="grid gap-2">
               <Label htmlFor="address">Address</Label>
@@ -327,8 +349,10 @@ export default function SuperAdminDashboard() {
                 onChange={(e) =>
                   setBusinessForm({ ...businessForm, address: e.target.value })
                 }
+                className={errors.address ? "border-red-500 focus-visible:ring-red-500" : ""}
                 required
               />
+              {errors.address && <p className="text-sm text-red-500">{errors.address}</p>}
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
@@ -340,7 +364,9 @@ export default function SuperAdminDashboard() {
                   onChange={(e) =>
                     setBusinessForm({ ...businessForm, email: e.target.value })
                   }
+                  className={errors.email ? "border-red-500 focus-visible:ring-red-500" : ""}
                 />
+                {errors.email && <p className="text-sm text-red-500">{errors.email}</p>}
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="phone">Phone</Label>
@@ -350,7 +376,9 @@ export default function SuperAdminDashboard() {
                   onChange={(e) =>
                     setBusinessForm({ ...businessForm, phone: e.target.value })
                   }
+                  className={errors.phone ? "border-red-500 focus-visible:ring-red-500" : ""}
                 />
+                {errors.phone && <p className="text-sm text-red-500">{errors.phone}</p>}
               </div>
             </div>
             <div className="grid gap-2">
@@ -364,7 +392,9 @@ export default function SuperAdminDashboard() {
                     gstNumber: e.target.value,
                   })
                 }
+                className={errors.gstNumber ? "border-red-500 focus-visible:ring-red-500" : ""}
               />
+              {errors.gstNumber && <p className="text-sm text-red-500">{errors.gstNumber}</p>}
             </div>
             <div className="grid gap-2">
               <Label htmlFor="logoUrl">Logo URL</Label>
@@ -378,7 +408,9 @@ export default function SuperAdminDashboard() {
                     logoUrl: e.target.value,
                   })
                 }
+                className={errors.logoUrl ? "border-red-500 focus-visible:ring-red-500" : ""}
               />
+              {errors.logoUrl && <p className="text-sm text-red-500">{errors.logoUrl}</p>}
             </div>
             <DialogFooter>
               <Button type="submit">Create Business</Button>
@@ -405,8 +437,10 @@ export default function SuperAdminDashboard() {
                 onChange={(e) =>
                   setBusinessForm({ ...businessForm, name: e.target.value })
                 }
+                className={errors.name ? "border-red-500 focus-visible:ring-red-500" : ""}
                 required
               />
+              {errors.name && <p className="text-sm text-red-500">{errors.name}</p>}
             </div>
             <div className="grid gap-2">
               <Label htmlFor="edit-address">Address</Label>
@@ -416,8 +450,10 @@ export default function SuperAdminDashboard() {
                 onChange={(e) =>
                   setBusinessForm({ ...businessForm, address: e.target.value })
                 }
+                className={errors.address ? "border-red-500 focus-visible:ring-red-500" : ""}
                 required
               />
+              {errors.address && <p className="text-sm text-red-500">{errors.address}</p>}
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
@@ -429,7 +465,9 @@ export default function SuperAdminDashboard() {
                   onChange={(e) =>
                     setBusinessForm({ ...businessForm, email: e.target.value })
                   }
+                  className={errors.email ? "border-red-500 focus-visible:ring-red-500" : ""}
                 />
+                {errors.email && <p className="text-sm text-red-500">{errors.email}</p>}
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="edit-phone">Phone</Label>
@@ -439,7 +477,9 @@ export default function SuperAdminDashboard() {
                   onChange={(e) =>
                     setBusinessForm({ ...businessForm, phone: e.target.value })
                   }
+                  className={errors.phone ? "border-red-500 focus-visible:ring-red-500" : ""}
                 />
+                {errors.phone && <p className="text-sm text-red-500">{errors.phone}</p>}
               </div>
             </div>
             <div className="grid gap-2">
@@ -453,7 +493,9 @@ export default function SuperAdminDashboard() {
                     gstNumber: e.target.value,
                   })
                 }
+                className={errors.gstNumber ? "border-red-500 focus-visible:ring-red-500" : ""}
               />
+              {errors.gstNumber && <p className="text-sm text-red-500">{errors.gstNumber}</p>}
             </div>
             <div className="grid gap-2">
               <Label htmlFor="edit-logoUrl">Logo URL</Label>
@@ -467,7 +509,9 @@ export default function SuperAdminDashboard() {
                     logoUrl: e.target.value,
                   })
                 }
+                className={errors.logoUrl ? "border-red-500 focus-visible:ring-red-500" : ""}
               />
+              {errors.logoUrl && <p className="text-sm text-red-500">{errors.logoUrl}</p>}
             </div>
             <DialogFooter>
               <Button type="submit">Save Changes</Button>

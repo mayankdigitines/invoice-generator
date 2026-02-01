@@ -136,7 +136,7 @@ export default function Support() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle>My Queries</CardTitle>
-          <div className="w-[180px]">
+          <div className="w-45">
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger>
                 <SelectValue placeholder="Filter by status" />

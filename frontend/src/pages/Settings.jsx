@@ -10,7 +10,8 @@ import {
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useTheme } from '../context/ThemeContext';
-import { Sun, Moon, Save, Building2, Check, CreditCard } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { Sun, Moon, Building2 } from 'lucide-react';
 
 export default function Settings() {
   const [form, setForm] = useState({
@@ -24,31 +25,14 @@ export default function Settings() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const { theme, toggleTheme } = useTheme();
+  const { user } = useAuth();
+  const canEdit = false;
 
   useEffect(() => {
     api.get('/business/profile').then((res) => {
       if (res.data) setForm(res.data);
     });
   }, []);
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!window.confirm('Are you sure you want to save these settings?')) {
-      return;
-    }
-    setLoading(true);
-    setSuccess(false);
-    try {
-      await api.post('/business/profile', form);
-      setSuccess(true);
-      setTimeout(() => setSuccess(false), 2000);
-    } catch (e) {
-      console.error(e);
-      alert('Failed to save settings');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 pt-4 pb-8 md:pt-8 md:pb-16">
@@ -82,10 +66,11 @@ export default function Settings() {
           </div>
           <CardDescription>
             This information will appear on your invoices.
+            {!canEdit && ' (Read Only)'}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form className="space-y-6">
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
@@ -96,6 +81,7 @@ export default function Settings() {
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
                   required
                   placeholder="Acme Inc."
+                  disabled={!canEdit}
                 />
               </div>
               <div className="space-y-2">
@@ -108,6 +94,7 @@ export default function Settings() {
                     setForm({ ...form, gstNumber: e.target.value })
                   }
                   placeholder="GSTIN12345"
+                  disabled={!canEdit}
                 />
               </div>
             </div>
@@ -121,6 +108,7 @@ export default function Settings() {
                 onChange={(e) => setForm({ ...form, address: e.target.value })}
                 required
                 placeholder="123 Business St, City, State"
+                disabled={!canEdit}
               />
             </div>
 
@@ -134,6 +122,7 @@ export default function Settings() {
                   onChange={(e) => setForm({ ...form, email: e.target.value })}
                   placeholder="billing@example.com"
                   type="email"
+                  disabled={!canEdit}
                 />
               </div>
               <div className="space-y-2">
@@ -145,6 +134,7 @@ export default function Settings() {
                   onChange={(e) => setForm({ ...form, phone: e.target.value })}
                   placeholder="+91 98765 43210"
                   type="tel"
+                  disabled={!canEdit}
                 />
               </div>
             </div>
@@ -162,6 +152,7 @@ export default function Settings() {
                   }
                   placeholder="https://example.com/logo.png"
                   className="flex-1"
+                  disabled={!canEdit}
                 />
                 {form.logoUrl && (
                   <div className="h-10 w-10 border rounded overflow-hidden shrink-0 bg-muted/50">
@@ -173,29 +164,6 @@ export default function Settings() {
                   </div>
                 )}
               </div>
-              <p className="text-[0.8rem] text-muted-foreground">
-                Provide a direct URL to your company logo image.
-              </p>
-            </div>
-
-            <div className="flex justify-end pt-4">
-              <Button
-                type="submit"
-                disabled={loading || success}
-                className="w-full md:w-auto min-w-37.5"
-              >
-                {loading ? (
-                  'Saving...'
-                ) : success ? (
-                  <>
-                    <Check className="mr-2 h-4 w-4" /> Saved
-                  </>
-                ) : (
-                  <>
-                    <Save className="mr-2 h-4 w-4" /> Save Changes
-                  </>
-                )}
-              </Button>
             </div>
           </form>
         </CardContent>

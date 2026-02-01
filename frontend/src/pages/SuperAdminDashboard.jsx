@@ -26,13 +26,12 @@ import {
   DialogFooter,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { Plus, UserPlus, Loader2, Edit, Users, Key, Eye, MessageSquare, Check, X as XIcon } from 'lucide-react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Plus, UserPlus, Loader2, Edit, Users, Key, Eye } from 'lucide-react';
+
 
 export default function SuperAdminDashboard() {
   const navigate = useNavigate();
   const [businesses, setBusinesses] = useState([]);
-  const [queries, setQueries] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Modals State
@@ -41,14 +40,11 @@ export default function SuperAdminDashboard() {
   const [isUsersModalOpen, setIsUsersModalOpen] = useState(false);
   const [isCreateUserModalOpen, setIsCreateUserModalOpen] = useState(false);
   const [isEditUserModalOpen, setIsEditUserModalOpen] = useState(false);
-  const [isQueryModalOpen, setIsQueryModalOpen] = useState(false);
 
   // Data State
   const [selectedBusiness, setSelectedBusiness] = useState(null);
   const [businessUsers, setBusinessUsers] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
-  const [selectedQuery, setSelectedQuery] = useState(null);
-  const [adminResponse, setAdminResponse] = useState('');
 
   // Forms State
   const [businessForm, setBusinessForm] = useState({
@@ -74,19 +70,9 @@ export default function SuperAdminDashboard() {
     }
   };
 
-  const fetchQueries = async () => {
-    try {
-      const { data } = await api.get('/queries/all');
-      setQueries(Array.isArray(data) ? data : []);
-    } catch (error) {
-      console.error('Failed to fetch queries:', error);
-      setQueries([]); 
-    }
-  };
-
   const loadData = async () => {
      setLoading(true);
-     await Promise.all([fetchBusinesses(), fetchQueries()]);
+     await fetchBusinesses();
      setLoading(false);
   };
 
@@ -172,19 +158,6 @@ export default function SuperAdminDashboard() {
     }
   };
 
-  const handleUpdateQueryStatus = async (status) => {
-    try {
-      await api.put(`/queries/${selectedQuery._id}`, {
-        status,
-        adminResponse 
-      });
-      setIsQueryModalOpen(false);
-      setAdminResponse('');
-      fetchQueries();
-    } catch (error) {
-      alert('Failed to update query');
-    }
-  };
 
   const openEditBusiness = (business) => {
     setSelectedBusiness(business);
@@ -248,14 +221,7 @@ export default function SuperAdminDashboard() {
         </Button>
       </div>
 
-      <Tabs defaultValue="businesses">
-        <TabsList>
-          <TabsTrigger value="businesses">Businesses</TabsTrigger>
-          <TabsTrigger value="queries">Queries & Support</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="businesses">
-          <Card>
+      <Card>
             <CardHeader>
               <CardTitle>Registered Businesses</CardTitle>
               <CardDescription>
@@ -327,69 +293,6 @@ export default function SuperAdminDashboard() {
               </Table>
             </CardContent>
           </Card>
-        </TabsContent>
-
-        <TabsContent value="queries">
-          <Card>
-            <CardHeader>
-              <CardTitle>Support Queries</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Business</TableHead>
-                    <TableHead>Subject</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {queries.map((q) => (
-                    <TableRow key={q._id}>
-                      <TableCell>{new Date(q.createdAt).toLocaleDateString()}</TableCell>
-                      <TableCell>
-                        <div className="font-medium">{q.businessId?.name}</div>
-                        <div className="text-xs text-muted-foreground">{q.businessId?.email}</div>
-                        {q.businessId?.phone && (
-                          <div className="text-xs text-muted-foreground">{q.businessId?.phone}</div>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <div className="font-medium">{q.subject}</div>
-                        <div className="text-xs text-muted-foreground truncate max-w-50">{q.message}</div>
-                      </TableCell>
-                      <TableCell>
-                        <span className={`px-2 py-1 rounded text-xs ${
-                          q.status === 'Resolved' ? 'bg-green-100 text-green-800' :
-                          q.status === 'Rejected' ? 'bg-red-100 text-red-800' :
-                          'bg-yellow-100 text-yellow-800'
-                        }`}>
-                          {q.status}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          onClick={() => {
-                            setSelectedQuery(q);
-                            setAdminResponse(q.adminResponse || '');
-                            setIsQueryModalOpen(true);
-                          }}
-                        >
-                          <MessageSquare className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
 
       {/* Create Business Modal */}
       <Dialog open={isBusinessModalOpen} onOpenChange={setIsBusinessModalOpen}>
@@ -721,58 +624,7 @@ export default function SuperAdminDashboard() {
           </form>
         </DialogContent>
       </Dialog>
-      {/* Query Detail Modal */}
-      <Dialog open={isQueryModalOpen} onOpenChange={setIsQueryModalOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Handle Query</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="p-4 bg-muted rounded-lg space-y-2">
-              <div className="flex justify-between items-start text-sm text-muted-foreground">
-                <div className="flex flex-col gap-1">
-                  <span className="font-medium text-foreground">{selectedQuery?.businessId?.name}</span>
-                  <span className="text-xs">
-                    Phone: <a href={`tel:${selectedQuery?.businessId?.phone}`} className="hover:underline">{selectedQuery?.businessId?.phone || 'N/A'}</a>
-                  </span>
-                </div>
-                <span>{selectedQuery && new Date(selectedQuery.createdAt).toLocaleDateString()}</span>
-              </div>
-              <h4 className="font-semibold pt-1">{selectedQuery?.subject}</h4>
-              <p className="text-sm">{selectedQuery?.message}</p>
-            </div>
-            
-            <div className="space-y-2">
-              <Label>Admin Response</Label>
-              <textarea
-                className="flex min-h-20 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                value={adminResponse}
-                onChange={(e) => setAdminResponse(e.target.value)}
-                placeholder="Write your response here..."
-              />
-            </div>
-            
-            <DialogFooter className="gap-2 sm:gap-0">
-               <div className="flex gap-2 w-full justify-end">
-                <Button 
-                  variant="destructive" 
-                  onClick={() => handleUpdateQueryStatus('Rejected')}
-                  disabled={!adminResponse}
-                >
-                  <XIcon className="mr-2 h-4 w-4" /> Reject
-                </Button>
-                <Button 
-                  className="bg-green-600 hover:bg-green-700" 
-                  onClick={() => handleUpdateQueryStatus('Resolved')}
-                  disabled={!adminResponse}
-                >
-                  <Check className="mr-2 h-4 w-4" /> Resolve
-                </Button>
-              </div>
-            </DialogFooter>
-          </div>
-        </DialogContent>
-      </Dialog>
+
     </div>
   );
 }

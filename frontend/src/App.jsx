@@ -30,6 +30,7 @@ import { Sidebar, MobileSidebar } from '@/components/Layout/Sidebar';
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Analytics = lazy(() => import('./pages/Analytics'));
 const SuperAdminDashboard = lazy(() => import('./pages/SuperAdminDashboard'));
+const SuperAdminQueries = lazy(() => import('./pages/SuperAdminQueries'));
 const AdminNotifications = lazy(() => import('./pages/AdminNotifications'));
 const Notifications = lazy(() => import('./pages/Notifications'));
 const History = lazy(() => import('./pages/History'));
@@ -96,6 +97,12 @@ function Layout() {
           icon: <CreditCard size={20} />,
           label: 'Subscription Plans',
           isActive: location.pathname === '/admin/plans',
+        },
+        {
+          to: '/admin/queries',
+          icon: <HelpCircle size={20} />,
+          label: 'Queries & Support',
+          isActive: location.pathname === '/admin/queries',
         },
         {
           to: '/admin/transactions',
@@ -200,7 +207,7 @@ function Layout() {
       />
 
       {/* Main Content */}
-      <main className="flex-1 p-4 md:p-8 overflow-y-auto w-full">
+      <main className="flex-1 p-4 md:p-8 overflow-y-auto max-w-5xl mx-auto">
         <Suspense fallback={<LoadingSpinner />}>
           <Outlet />
         </Suspense>
@@ -245,6 +252,7 @@ function App() {
                   element={<AdminNotifications />}
                 />
                 <Route path="/admin/plans" element={<SubscriptionPlans />} />
+                <Route path="/admin/queries" element={<SuperAdminQueries />} />
                 <Route path="/admin/transactions" element={<Transactions />} />
 
                 {/* Business User Routes Only */}

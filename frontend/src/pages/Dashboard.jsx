@@ -614,7 +614,7 @@ export default function InvoiceGenerator() {
               <Button
                 variant="outline"
                 onClick={addItem}
-                className="w-full border-dashed py-8 text-muted-foreground hover:text-primary hover:border-primary/50 hover:bg-muted/50 transition-all font-medium mt-4"
+                className="w-full border-dashed py-4 text-muted-foreground hover:text-primary hover:border-primary/50 hover:bg-muted/50 transition-all font-medium mt-4"
               >
                 <Plus className="mr-2 h-4 w-4" /> Add Another Item (or press
                 Enter on last item)

@@ -8,6 +8,17 @@ import {
   FileText,
   TrendingUp,
 } from 'lucide-react';
+import {
+  BarChart,
+  Bar,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from 'recharts';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
@@ -21,6 +32,7 @@ export default function BusinessDetails() {
     totalTax: 0,
     count: 0,
   });
+  const [chartData, setChartData] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Fetch Data
@@ -35,6 +47,10 @@ export default function BusinessDetails() {
         // Fetch Stats
         const statsRes = await api.get(`/business/${businessId}/stats`);
         setStats(statsRes.data);
+
+        // Fetch Analytics
+        const analyticsRes = await api.get(`/business/${businessId}/analytics`);
+        setChartData(analyticsRes.data);
       } catch (error) {
         console.error('Error fetching details:', error);
       } finally {
@@ -113,6 +129,102 @@ export default function BusinessDetails() {
               ₹{stats.totalTax.toLocaleString()}
             </div>
             <p className="text-xs text-muted-foreground">GST/Tax accumulated</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Charts */}
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card className="col-span-1">
+          <CardHeader>
+            <CardTitle>Revenue Overview</CardTitle>
+          </CardHeader>
+          <CardContent className="pl-2">
+            <div className="h-87.5 w-full">
+              {chartData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={350}>
+                  <BarChart data={chartData}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                    <XAxis
+                      dataKey="name"
+                      stroke="#888888"
+                      fontSize={12}
+                      tickLine={false}
+                      axisLine={false}
+                    />
+                    <YAxis
+                      stroke="#888888"
+                      fontSize={12}
+                      tickLine={false}
+                      axisLine={false}
+                      tickFormatter={(value) => `₹${value}`}
+                    />
+                    <Tooltip
+                      formatter={(value) => [`₹${value}`, 'Revenue']}
+                      cursor={{ fill: 'transparent' }}
+                      contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                    />
+                    <Bar
+                      dataKey="revenue"
+                      fill="#2563eb" // Blue-600
+                      radius={[4, 4, 0, 0]}
+                      name="Revenue"
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex items-center justify-center h-full text-muted-foreground p-10">
+                  No data available for the chart
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="col-span-1">
+          <CardHeader>
+            <CardTitle>Invoices Created</CardTitle>
+          </CardHeader>
+          <CardContent className="pl-2">
+            <div className="h-87.5 w-full">
+              {chartData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={350}>
+                  <LineChart data={chartData}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                    <XAxis
+                      dataKey="name"
+                      stroke="#888888"
+                      fontSize={12}
+                      tickLine={false}
+                      axisLine={false}
+                    />
+                    <YAxis
+                      stroke="#888888"
+                      fontSize={12}
+                      tickLine={false}
+                      axisLine={false}
+                      allowDecimals={false}
+                    />
+                    <Tooltip
+                      contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="invoices"
+                      stroke="#16a34a" // Green-600
+                      strokeWidth={2}
+                      dot={{ r: 4, fill: "#16a34a" }}
+                      activeDot={{ r: 6 }}
+                      name="Invoices"
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex items-center justify-center h-full text-muted-foreground p-10">
+                  No data available for the chart
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
       </div>

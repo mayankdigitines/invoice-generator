@@ -1,8 +1,15 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import api from '../api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   Table,
   TableBody,
@@ -18,6 +25,14 @@ export default function Support() {
   const [newQuery, setNewQuery] = useState({ subject: '', message: '' });
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [statusFilter, setStatusFilter] = useState('All');
+
+  const filteredQueries = useMemo(() => {
+    return queries.filter((q) => {
+      if (statusFilter === 'All') return true;
+      return q.status === statusFilter;
+    });
+  }, [queries, statusFilter]);
 
   useEffect(() => {
     fetchQueries();
@@ -119,8 +134,21 @@ export default function Support() {
       </Card>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle>My Queries</CardTitle>
+          <div className="w-[180px]">
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger>
+                <SelectValue placeholder="Filter by status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="All">All Statuses</SelectItem>
+                <SelectItem value="Pending">Pending</SelectItem>
+                <SelectItem value="Resolved">Resolved</SelectItem>
+                <SelectItem value="Rejected">Rejected</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </CardHeader>
         <CardContent>
           <Table>
@@ -133,7 +161,7 @@ export default function Support() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {queries.map((q) => (
+              {filteredQueries.map((q) => (
                 <TableRow key={q._id}>
                   <TableCell>
                     {new Date(q.createdAt).toLocaleDateString()}
@@ -158,7 +186,7 @@ export default function Support() {
                   <TableCell>{q.adminResponse || '-'}</TableCell>
                 </TableRow>
               ))}
-              {queries.length === 0 && (
+              {filteredQueries.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={4} className="text-center">
                     No queries found

@@ -11,6 +11,7 @@ const {
   getBusinessStats,
   getMyBusinessStats,
   getBusinessAnalytics,
+  getBusinessAnalyticsById,
   getBusinessById,
 } = require('../controllers/businessController');
 const { createBusinessUser } = require('../controllers/authController');
@@ -26,6 +27,7 @@ router.get('/:id/users', protect, admin, getBusinessUsers);
 router.post('/users/create', protect, admin, createBusinessUser);
 router.put('/users/:userId', protect, admin, updateBusinessUser);
 router.get('/:id/stats', protect, admin, getBusinessStats);
+router.get('/:id/analytics', protect, admin, getBusinessAnalyticsById);
 
 // Business Owner Routes
 router.get('/stats', protect, getMyBusinessStats);

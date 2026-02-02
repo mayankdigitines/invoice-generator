@@ -767,12 +767,12 @@ export default function InvoiceGenerator() {
             <Button
               variant="outline"
               onClick={() => setSubscriptionRequired(false)}
-              className="w-full"
+              className=""
             >
               Later
             </Button>
             <Button
-              className="bg-amber-600 hover:bg-amber-700 text-white w-full"
+              className="bg-amber-600 hover:bg-amber-700 text-white"
               onClick={() => navigate('/subscription')}
             >
               Update Plan

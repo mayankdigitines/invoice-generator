@@ -10,16 +10,12 @@ import {
   CardDescription,
 } from '@/components/ui/card';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Loader2, Send } from 'lucide-react';
-import { toast } from 'sonner'; // Assuming sonner is used, given the ShadCN UI context, or I'll use standard alert/console if not sure.
-// Checking dependencies might be good, but standard ShadCN often uses sonner or similar. I'll rely on simple alerts or verify context later.
-// I'll check package.json for toast library.
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { Loader2, Send, Check, ChevronsUpDown, Search } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 export default function AdminNotifications() {
   const [businesses, setBusinesses] = useState([]);
@@ -30,6 +26,8 @@ export default function AdminNotifications() {
     message: '',
   });
   const [sending, setSending] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     fetchBusinesses();
@@ -88,6 +86,11 @@ export default function AdminNotifications() {
     }
   };
 
+  // Filter businesses safely
+  const filteredBusinesses = businesses.filter((business) =>
+    business.name?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
@@ -108,25 +111,87 @@ export default function AdminNotifications() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium">Recipient</label>
-                <Select
-                  value={formData.recipientId}
-                  onValueChange={handleRecipientChange}
-                  disabled={loading}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select recipient" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">
-                      All Businesses (Broadcast)
-                    </SelectItem>
-                    {businesses.map((business) => (
-                      <SelectItem key={business._id} value={business._id}>
-                        {business.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Popover open={open} onOpenChange={setOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={open}
+                      className="w-full justify-between"
+                      disabled={loading}
+                    >
+                      {formData.recipientId === 'all'
+                        ? 'All Businesses (Broadcast)'
+                        : businesses.find(
+                            (business) => business._id === formData.recipientId
+                          )?.name || 'Select recipient...'}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[300px] p-0" align="start">
+                    <div className="flex items-center border-b px-3">
+                      <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+                      <input
+                        className="flex h-11 w-full rounded-md bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                        placeholder="Search business..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                      />
+                    </div>
+                    <div className="max-h-[300px] overflow-y-auto p-1">
+                      <div
+                        className={cn(
+                          'relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground',
+                          formData.recipientId === 'all' &&
+                            'bg-accent text-accent-foreground'
+                        )}
+                        onClick={() => {
+                          handleRecipientChange('all');
+                          setOpen(false);
+                        }}
+                      >
+                        <Check
+                          className={cn(
+                            'mr-2 h-4 w-4',
+                            formData.recipientId === 'all'
+                              ? 'opacity-100'
+                              : 'opacity-0'
+                          )}
+                        />
+                        All Businesses (Broadcast)
+                      </div>
+                      {filteredBusinesses.map((business) => (
+                        <div
+                          key={business._id}
+                          className={cn(
+                            'relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground',
+                            formData.recipientId === business._id &&
+                              'bg-accent text-accent-foreground'
+                          )}
+                          onClick={() => {
+                            handleRecipientChange(business._id);
+                            setOpen(false);
+                          }}
+                        >
+                          <Check
+                            className={cn(
+                              'mr-2 h-4 w-4',
+                              formData.recipientId === business._id
+                                ? 'opacity-100'
+                                : 'opacity-0'
+                            )}
+                          />
+                          {business.name}
+                        </div>
+                      ))}
+                      {filteredBusinesses.length === 0 && (
+                        <div className="py-6 text-center text-sm text-muted-foreground">
+                          No business found.
+                        </div>
+                      )}
+                    </div>
+                  </PopoverContent>
+                </Popover>
               </div>
 
               <div className="space-y-2">

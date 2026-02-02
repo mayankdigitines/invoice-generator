@@ -18,6 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { toast } from 'sonner';
 import { RefreshCcw } from 'lucide-react';
 
 export default function Support() {
@@ -66,12 +67,14 @@ export default function Support() {
       const { data } = await api.post('/queries', newQuery);
       setQueries([data, ...queries]);
       setNewQuery({ subject: '', message: '' });
-      alert('Query submitted successfully!');
+      toast.success('Query submitted successfully!', {
+        description: 'Our support team will get back to you shortly.',
+      });
     } catch (error) {
       console.error('Failed to create query', error);
-      alert(
-        error.response?.data?.message ||
-          'Failed to submit query. Please try again.',
+      toast.error(
+        error.response?.data?.message || 'Failed to submit query.',
+        { description: 'Please try again later' }
       );
     } finally {
       setSubmitting(false);

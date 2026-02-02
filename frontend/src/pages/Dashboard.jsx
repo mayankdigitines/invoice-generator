@@ -207,23 +207,29 @@ export default function InvoiceGenerator() {
   };
 
   const totals = useMemo(() => {
-    const t = items.reduce(
+    return items.reduce(
       (acc, i) => {
         const base = i.price * i.quantity;
-        const disc = (base * i.discount) / 100;
-        const tax = ((base - disc) * i.gstRate) / 100;
+        const itemDiscAmount = (base * i.discount) / 100;
+        const netItemTotal = base - itemDiscAmount;
+
+        // Apply Overall Discount Share (on Goods Value, not Tax)
+        const overallShare = (netItemTotal * overallDiscount) / 100;
+
+        // Taxable Value is reduced by the overall discount share
+        const taxableValue = netItemTotal - overallShare;
+        const tax = (taxableValue * i.gstRate) / 100;
+
         return {
           sub: acc.sub + base,
-          disc: acc.disc + disc,
+          disc: acc.disc + itemDiscAmount,
+          overallDiscAmount: acc.overallDiscAmount + overallShare,
           tax: acc.tax + tax,
-          total: acc.total + (base - disc + tax),
+          final: acc.final + (taxableValue + tax),
         };
       },
-      { sub: 0, disc: 0, tax: 0, total: 0 },
+      { sub: 0, disc: 0, overallDiscAmount: 0, tax: 0, final: 0 },
     );
-
-    const overallDiscAmount = (t.total * overallDiscount) / 100;
-    return { ...t, overallDiscAmount, final: t.total - overallDiscAmount };
   }, [items, overallDiscount]);
 
   const handleSubmit = async () => {

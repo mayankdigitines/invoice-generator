@@ -79,6 +79,9 @@ const sendNotification = async (req, res) => {
         message,
         type,
       });
+
+      req.app.get('io').to(businessId).emit('newNotification', notification);
+
       return res
         .status(201)
         .json({ message: 'Notification sent successfully', notification });
@@ -102,6 +105,15 @@ const sendNotification = async (req, res) => {
       }));
 
       await Notification.insertMany(notificationsToCreate);
+
+      // Notify all businesses
+      req.app.get('io').to('all_businesses').emit('newBroadcast', {
+        title,
+        message,
+        type: 'broadcast',
+        createdAt: new Date(),
+      });
+
       return res
         .status(201)
         .json({ message: `Broadcast sent to ${businesses.length} businesses` });

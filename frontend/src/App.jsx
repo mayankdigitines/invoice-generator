@@ -23,8 +23,10 @@ import {
 } from 'lucide-react';
 import { ThemeProvider } from './context/ThemeContext.jsx';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { SocketProvider, useSocket } from './context/SocketContext';
 import { Button } from '@/components/ui/button';
 import { Sidebar, MobileSidebar } from '@/components/Layout/Sidebar';
+import { Toaster } from '@/components/ui/sonner';
 
 // Lazy Load Pages
 const Dashboard = lazy(() => import('./pages/Dashboard'));
@@ -82,6 +84,7 @@ function Layout() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const location = useLocation();
   const { user } = useAuth();
+  const { unreadNotifications, pendingQueries } = useSocket();
 
   const navItems = useMemo(() => {
     if (user?.role === 'super_admin') {
@@ -103,6 +106,7 @@ function Layout() {
           icon: <HelpCircle size={20} />,
           label: 'Queries & Support',
           isActive: location.pathname === '/admin/queries',
+          badge: pendingQueries > 0 ? pendingQueries : undefined,
         },
         {
           to: '/admin/transactions',
@@ -115,6 +119,7 @@ function Layout() {
           icon: <Bell size={20} />,
           label: 'Notifications',
           isActive: location.pathname === '/admin/notifications',
+          badge: unreadNotifications > 0 ? unreadNotifications : undefined,
         },
       ];
     }
@@ -154,6 +159,7 @@ function Layout() {
         icon: <Bell size={20} />,
         label: 'Notifications',
         isActive: location.pathname === '/notifications',
+        badge: unreadNotifications > 0 ? unreadNotifications : undefined,
       },
       {
         to: '/my-transactions',
@@ -174,10 +180,11 @@ function Layout() {
         isActive: location.pathname === '/support',
       },
     ];
-  }, [user, location.pathname]);
+  }, [user, location.pathname, unreadNotifications, pendingQueries]);
 
   return (
     <div className="min-h-screen bg-muted/20 flex flex-col md:flex-row">
+      <Toaster />
       {/* Mobile Header */}
       <header className="md:hidden h-16 border-b bg-background flex items-center justify-between px-4 sticky top-0 z-30 shadow-sm">
         <Link to="/" className="font-bold text-xl tracking-tight">
@@ -229,7 +236,8 @@ function App() {
     <BrowserRouter>
       <ThemeProvider>
         <AuthProvider>
-          <Suspense fallback={<LoadingSpinner />}>
+          <SocketProvider>
+            <Suspense fallback={<LoadingSpinner />}>
             <Routes>
               {/* Public / Standalone Routes */}
               <Route path="/login" element={<Login />} />
@@ -278,7 +286,8 @@ function App() {
               </Route>
             </Routes>
           </Suspense>
-        </AuthProvider>
+        </SocketProvider>
+      </AuthProvider>
       </ThemeProvider>
     </BrowserRouter>
   );

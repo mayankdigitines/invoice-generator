@@ -22,6 +22,12 @@ const createQuery = async (req, res) => {
       status: 'Pending'
     });
 
+    // Populate business details for real-time update
+    await query.populate('businessId', 'name email phone');
+
+    // Notify Super Admin
+    req.app.get('io').to('super_admin').emit('newQuery', query);
+
     res.status(201).json(query);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -73,6 +79,9 @@ const updateQueryStatus = async (req, res) => {
     
     // Populate before returning
     await updatedQuery.populate('businessId', 'name email phone');
+
+    // Notify Business
+    req.app.get('io').to(updatedQuery.businessId._id.toString()).emit('queryUpdated', updatedQuery);
 
     res.json(updatedQuery);
   } catch (error) {

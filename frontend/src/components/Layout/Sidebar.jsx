@@ -5,7 +5,7 @@ import { LogOut, X, Command } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 
-export function Sidebar({ navItems }) {
+export function Sidebar({ navItems = [] }) {
   const { logout, user } = useAuth();
   const [isHovered, setIsHovered] = useState(false);
 
@@ -42,15 +42,20 @@ export function Sidebar({ navItems }) {
               onClick={() => setIsHovered(false)}
               className={({ isActive }) =>
                 cn(
-                  'flex items-center gap-3 px-4 py-3 mx-2 rounded-md transition-all relative overflow-hidden group/item',
+                  'flex items-center gap-3 px-4 py-3 mx-2 rounded-md transition-all relative group/item',
                   isActive
-                    ? 'bg-primary text-primary-foreground shadow-md'
+                    ? 'bg-primary/10 text-primary font-medium'
                     : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                 )
               }
             >
-              <div className="shrink-0 flex items-center justify-center w-5">
+              <div className="shrink-0 flex items-center justify-center w-5 relative">
                 {item.icon}
+                {item.badge && (
+                  <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[9px] font-bold text-destructive-foreground animate-pulse border border-background">
+                    {item.badge > 9 ? '9+' : item.badge}
+                  </span>
+                )}
               </div>
               <span 
                 className={cn(
@@ -84,7 +89,7 @@ export function Sidebar({ navItems }) {
   );
 }
 
-export function MobileSidebar({ isOpen, setIsOpen, navItems }) {
+export function MobileSidebar({ isOpen, setIsOpen, navItems = [] }) {
   const { logout, user } = useAuth();
 
   if (!isOpen) return null;
@@ -126,12 +131,19 @@ export function MobileSidebar({ isOpen, setIsOpen, navItems }) {
                 cn(
                   'flex items-center gap-3 px-3 py-3 rounded-md transition-colors font-medium text-sm',
                   isActive
-                    ? 'bg-primary text-primary-foreground shadow-sm'
+                    ? 'bg-primary/10 text-primary font-medium'
                     : 'text-muted-foreground hover:bg-muted hover:text-foreground',
                 )
               }
             >
-              <div className="w-5">{item.icon}</div>
+              <div className="w-5 relative">
+                {item.icon}
+                {item.badge && (
+                  <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[9px] font-bold text-destructive-foreground border border-background">
+                    {item.badge > 9 ? '9+' : item.badge}
+                  </span>
+                )}
+              </div>
               <span>{item.label}</span>
             </NavLink>
           ))}

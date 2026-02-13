@@ -4,6 +4,7 @@ const itemSchema = new mongoose.Schema(
   {
     name: { type: String, required: true },
     description: { type: String },
+    hsnCode: { type: String, default: '' },
     price: { type: Number, required: true },
     gstRate: { type: Number, default: 0 },
     discount: { type: Number, default: 0 }, // (Percentage)

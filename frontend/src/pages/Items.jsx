@@ -3,8 +3,6 @@ import api from '@/api';
 import {
   Card,
   CardContent,
-  CardHeader,
-  CardTitle,
   CardFooter,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -14,17 +12,18 @@ import {
   Edit,
   Trash2,
   Plus,
-  Package,
   ChevronLeft,
   ChevronRight,
   Search,
   X,
   Loader2,
+  Sparkles, // Added for the magic button
 } from 'lucide-react';
 
 export default function Items() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [aiLoading, setAiLoading] = useState(false); // New state for AI loader
 
   // Search & Pagination State
   const [search, setSearch] = useState('');
@@ -43,13 +42,14 @@ export default function Items() {
   // Form State
   const [formData, setFormData] = useState({
     name: '',
+    hsnCode: '', // Added HSN
     price: '',
     gstRate: 18,
     discount: 0,
     description: '',
   });
 
-  // Debouce Search
+  // Debounce Search
   useEffect(() => {
     const handler = setTimeout(() => {
       setDebouncedSearch(search);
@@ -89,10 +89,41 @@ export default function Items() {
     fetchItems();
   }, [fetchItems]);
 
+  // --- New Feature: Auto-Fill GST Details ---
+  const handleAutoFill = async () => {
+    if (!formData.name && !formData.hsnCode) {
+      alert("Please enter an Item Name or HSN Code first.");
+      return;
+    }
+
+    setAiLoading(true);
+    try {
+      // Calls the new backend route we created
+      const query = formData.hsnCode || formData.name;
+      const res = await api.get('/proxy/gst-lookup', { params: { query } });
+      
+      if (res.data) {
+        setFormData(prev => ({
+          ...prev,
+          hsnCode: res.data.hsnCode || prev.hsnCode,
+          gstRate: res.data.gstRate || prev.gstRate,
+          description: res.data.description || prev.description,
+          // If AI suggests a price, you could add it, but usually price is user-specific
+        }));
+      }
+    } catch (err) {
+      console.error("Failed to fetch GST details", err);
+      alert("Could not auto-fetch details. Please enter manually.");
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
   // Handlers
   const openAddModal = () => {
     setFormData({
       name: '',
+      hsnCode: '',
       price: '',
       gstRate: 18,
       discount: 0,
@@ -105,6 +136,7 @@ export default function Items() {
   const openEditModal = (item) => {
     setFormData({
       name: item.name,
+      hsnCode: item.hsnCode || '',
       price: item.price,
       gstRate: item.gstRate,
       discount: item.discount,
@@ -201,6 +233,9 @@ export default function Items() {
                     Name
                   </th>
                   <th className="h-12 px-4 align-middle font-medium whitespace-nowrap">
+                    HSN
+                  </th>
+                  <th className="h-12 px-4 align-middle font-medium whitespace-nowrap">
                     Description
                   </th>
                   <th className="h-12 px-4 align-middle font-medium whitespace-nowrap">
@@ -220,7 +255,7 @@ export default function Items() {
               <tbody className="[&_tr:last-child]:border-0">
                 {loading ? (
                   <tr>
-                    <td colSpan={6} className="h-32 text-center">
+                    <td colSpan={7} className="h-32 text-center">
                       <div className="flex justify-center items-center h-full">
                         <Loader2 className="h-6 w-6 animate-spin text-primary" />
                         <span className="ml-2 text-muted-foreground">
@@ -232,7 +267,7 @@ export default function Items() {
                 ) : items.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={6}
+                      colSpan={7}
                       className="h-32 text-center text-muted-foreground"
                     >
                       {debouncedSearch
@@ -248,6 +283,9 @@ export default function Items() {
                     >
                       <td className="p-3 align-middle font-medium">
                         {item.name}
+                      </td>
+                      <td className="p-3 align-middle text-muted-foreground">
+                        {item.hsnCode || '-'}
                       </td>
                       <td className="p-3 align-middle text-muted-foreground truncate max-w-37.5">
                         {item.description || '-'}
@@ -325,17 +363,35 @@ export default function Items() {
         title={isEditing ? 'Edit Item' : 'Add New Item'}
       >
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="text-sm font-medium">Item Name</label>
-            <Input
-              required
-              value={formData.name}
-              onChange={(e) =>
-                setFormData({ ...formData, name: e.target.value })
-              }
-              placeholder="e.g., Web Hosting"
-            />
+          <div className="flex gap-2 items-end">
+            <div className="flex-1">
+              <label className="text-sm font-medium">Item Name</label>
+              <Input
+                required
+                value={formData.name}
+                onChange={(e) =>
+                  setFormData({ ...formData, name: e.target.value })
+                }
+                placeholder="e.g., Gaming Mouse"
+              />
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleAutoFill}
+              disabled={aiLoading}
+              title="Auto-fill GST & HSN using AI"
+              className="mb-[2px]"
+            >
+              {aiLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Sparkles className="h-4 w-4 text-purple-600" />
+              )}
+              <span className="ml-2 hidden sm:inline">Auto-Fill</span>
+            </Button>
           </div>
+
           <div>
             <label className="text-sm font-medium">Description</label>
             <Input
@@ -346,7 +402,18 @@ export default function Items() {
               placeholder="Optional details"
             />
           </div>
-          <div className="grid grid-cols-3 gap-3">
+
+          <div className="grid grid-cols-2 gap-3">
+             <div>
+              <label className="text-sm font-medium">HSN Code</label>
+              <Input
+                value={formData.hsnCode}
+                onChange={(e) =>
+                  setFormData({ ...formData, hsnCode: e.target.value })
+                }
+                placeholder="e.g., 8471"
+              />
+            </div>
             <div>
               <label className="text-sm font-medium">Price (₹)</label>
               <Input

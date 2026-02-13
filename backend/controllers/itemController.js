@@ -42,7 +42,7 @@ exports.getItems = async (req, res, next) => {
 // Create a new item (Now saves discount too)
 exports.createItem = async (req, res, next) => {
   try {
-    const { name, price, gstRate, discount, description } = req.body;
+    const { name, price, gstRate, discount, description, hsnCode } = req.body;
     const businessId = req.user.businessId;
 
     if (!businessId) {
@@ -65,6 +65,7 @@ exports.createItem = async (req, res, next) => {
       gstRate: gstRate || 0,
       discount: discount || 0,
       description,
+      hsnCode,
       businessId,
     });
 
@@ -78,7 +79,7 @@ exports.createItem = async (req, res, next) => {
 // Update an Item
 exports.updateItem = async (req, res, next) => {
   try {
-    const { name, price, gstRate, discount, description } = req.body;
+    const { name, price, gstRate, discount, description, hsnCode } = req.body;
 
     // Ensure we are updating only if it belongs to the user's business
     const filter = { _id: req.params.id };
@@ -88,7 +89,7 @@ exports.updateItem = async (req, res, next) => {
 
     const updatedItem = await Item.findOneAndUpdate(
       filter,
-      { name, price, gstRate, discount, description },
+      { name, price, gstRate, discount, description, hsnCode },
       { new: true },
     );
 

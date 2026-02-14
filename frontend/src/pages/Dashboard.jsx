@@ -343,7 +343,7 @@ export default function InvoiceGenerator() {
             </p>
           </div>
         </div>
-        <div className="flex gap-2">
+        {/* <div className="flex gap-2">
           <Button variant="secondary" onClick={() => navigate(0)} className="hidden sm:flex">
             Reset
           </Button>
@@ -359,7 +359,7 @@ export default function InvoiceGenerator() {
             )}
             {isEditing ? 'Save Changes' : 'Generate Now'}
           </Button>
-        </div>
+        </div> */}
       </div>
 
       <div className="max-w-5xl mx-auto mt-6 px-4 sm:px-6">
@@ -423,17 +423,6 @@ export default function InvoiceGenerator() {
                       className={cn('bg-muted/30 font-medium', errors.customerName && 'border-red-500')}
                     />
                   </div>
-
-                  {/* Address */}
-                  <div>
-                    <label className="text-[10px] uppercase font-bold text-muted-foreground">Billing Address</label>
-                    <Input
-                      value={customer.address}
-                      onChange={(e) => setCustomer({ ...customer, address: e.target.value })}
-                      placeholder="Street Address, City"
-                      className="bg-muted/30"
-                    />
-                  </div>
                 </div>
               </div>
 
@@ -459,6 +448,16 @@ export default function InvoiceGenerator() {
                         <Calendar mode="single" selected={date} onSelect={setDate} initialFocus />
                       </PopoverContent>
                     </Popover>
+                  </div>
+                  {/* Address */}
+                  <div>
+                    <label className="text-[10px] uppercase font-bold text-muted-foreground">Billing Address</label>
+                    <Input
+                      value={customer.address}
+                      onChange={(e) => setCustomer({ ...customer, address: e.target.value })}
+                      placeholder="Street Address, City"
+                      className="bg-muted/30"
+                    />
                   </div>
                 </div>
               </div>
@@ -605,49 +604,67 @@ export default function InvoiceGenerator() {
               </Button>
             </div>
 
-            {/* 3. Totals Section */}
-            <div className="flex flex-col md:flex-row justify-end pt-4">
-              <div className="w-full md:w-1/2 lg:w-1/3 space-y-3 bg-muted/20 p-4 rounded-lg">
-                <div className="flex justify-between text-xs">
-                  <span>Subtotal</span>
-                  <span className="font-mono">{formatCurrency(totals.sub)}</span>
-                </div>
-                <div className="flex justify-between text-xs text-green-600">
-                  <span>Discount</span>
-                  <span className="font-mono">- {formatCurrency(totals.disc)}</span>
-                </div>
-                <div className="flex justify-between text-xs">
-                  <span>GST Output</span>
-                  <span className="font-mono">{formatCurrency(totals.tax)}</span>
-                </div>
-
-                <div className="flex items-center justify-between pt-2 border-t border-dashed">
-                  <span className="text-xs font-semibold">Overall Discount (%)</span>
-                  <Input
-                    type="number"
-                    min="0"
-                    max="100"
-                    className="h-7 w-16 text-right text-xs bg-background"
-                    value={overallDiscount}
-                    onChange={(e) => setOverallDiscount(Number(e.target.value))}
-                    onFocus={(e) => e.target.select()}
-                  />
-                </div>
-                {totals.overallDiscAmount > 0 && (
-                  <div className="flex justify-between text-xs text-green-600 font-bold">
-                    <span>Extra Off</span>
-                    <span>- {formatCurrency(totals.overallDiscAmount)}</span>
+            <div className=''>
+              {/* 3. Totals Section */}
+              <div className="flex flex-col md:flex-row pt-4 pb-12">
+                <div className="w-full md:w-1/2 lg:w-1/3 space-y-1 bg-muted/20 p-4 rounded-lg">
+                  <div className="flex justify-between text-sm">
+                    <span>Subtotal</span>
+                    <span className="font-mono">{formatCurrency(totals.sub)}</span>
                   </div>
-                )}
+                  <div className="flex justify-between text-sm text-green-600">
+                    <span>Discount</span>
+                    <span className="font-mono">- {formatCurrency(totals.disc)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span>GST Output</span>
+                    <span className="font-mono">{formatCurrency(totals.tax)}</span>
+                  </div>
 
-                <div className="flex justify-between text-lg font-bold border-t pt-2 mt-2">
-                  <span>Total</span>
-                  <span className="text-blue-700">{formatCurrency(totals.final)}</span>
+                  <div className="flex items-center justify-between pt-2 border-t border-dashed">
+                    <span className="text-xs font-semibold">Overall Discount (%)</span>
+                    <Input
+                      type="number"
+                      min="0"
+                      max="100"
+                      className="h-7 w-16 text-right text-sm bg-background"
+                      value={overallDiscount}
+                      onChange={(e) => setOverallDiscount(Number(e.target.value))}
+                      onFocus={(e) => e.target.select()}
+                    />
+                  </div>
+                  {totals.overallDiscAmount > 0 && (
+                    <div className="flex justify-between text-xs text-green-600 font-bold">
+                      <span>Extra Off</span>
+                      <span>- {formatCurrency(totals.overallDiscAmount)}</span>
+                    </div>
+                  )}
+
+                  <div className="flex justify-between text-lg font-bold border-t pt-2 mt-2">
+                    <span>Total</span>
+                    <span className="text-blue-700">{formatCurrency(totals.final)}</span>
+                  </div>
                 </div>
+              </div>
+              <div className="flex gap-2 justify-end mr-6 -mt-32">
+              <Button
+                onClick={handleSubmit}
+                disabled={isGenerating}
+                className="min-w-72 shadow-md font-semibold bg-blue-600 hover:bg-blue-700 text-white hover:scale-[1.02] focus:outline-none focus:ring-4 focus:ring-blue-500 transition-all"
+              >
+                {isGenerating ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : (
+                  <Zap className="h-4 w-4 mr-2 fill-current" />
+                )}
+                {isEditing ? 'Save Changes' : 'Generate Now'}
+              </Button>
               </div>
             </div>
           </CardContent>
+          
         </Card>
+       
       </div>
 
       {/* --- Optimized Success Modal (WhatsApp Integrated) --- */}
@@ -657,23 +674,15 @@ export default function InvoiceGenerator() {
             <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4 ring-8 ring-green-50">
               <Check className="h-8 w-8 text-green-600" />
             </div>
-            <DialogTitle className="text-xl">Invoice Generated!</DialogTitle>
+            <DialogTitle className="text-xl text-center">Invoice Generated!</DialogTitle>
             <DialogDescription className="text-center pt-2">
               Invoice <b>#{generatedInvoice?.invoiceNumber}</b> is ready to share.
             </DialogDescription>
           </DialogHeader>
 
           <div className="p-6 space-y-4">
-            {/* Primary Action: WhatsApp */}
-            <Button
-              className=" h-12 text-lg font-bold bg-[#25D366] hover:bg-[#128C7E] text-white shadow-md transition-all hover:scale-[1.01]"
-              onClick={handleWhatsAppShare}
-            >
-              <WhatsAppIcon className="w-6 h-6 mr-3" />
-              WhatsApp
-            </Button>
             
-             <div className="grid grid-cols-2 gap-3">
+             <div className="grid grid-cols-3 gap-3">
               {/* Secondary: View PDF */}
               <Button
                 variant="outline"
@@ -705,6 +714,14 @@ export default function InvoiceGenerator() {
                   </>
                 )}
               </Button>
+              {/* Primary Action: WhatsApp */}
+            <Button
+              variant="primary"
+                className="bg-green-400 h-12 border-primary/20 text-white hover:text-green-600 focus:outline-none focus:ring-4 focus:ring-green-300 transition-all"
+              onClick={handleWhatsAppShare}
+            >
+              <WhatsAppIcon className="w-8 h-8" />
+            </Button>
             </div>
           </div>
 
